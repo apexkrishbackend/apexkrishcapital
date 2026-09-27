@@ -79,7 +79,7 @@ export default function HeroSection() {
 
         {/* High-Contrast Conversion Headline */}
         <h1 className="text-4xl sm:text-6xl font-bold tracking-[-0.03em] text-foreground leading-[1.1]">
-          Private capital for exceptional businesses.
+          Access Exclusive Deals. Keep More of Your Upside.
         </h1>
 
         {/* Concise Narrative Value Proposition */}
@@ -204,7 +204,7 @@ export default function HeroSection() {
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                   Pre-Money Valuation
                 </span>
-                <p className="text-2xl font-bold text-foreground tabular-nums">$3.7B</p>
+                <p className="text-2xl font-bold text-foreground tabular-nums">&lt;$4B</p>
                 <span className="text-xs text-muted-foreground">Institutional Round</span>
               </div>
 
@@ -228,7 +228,7 @@ export default function HeroSection() {
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                   Closing Deadline
                 </span>
-                <p className="text-2xl font-bold text-foreground">Sept 30, 2026</p>
+                <p className="text-2xl font-bold text-foreground">Oct 8, 2026</p>
                 <span className="text-xs text-muted-foreground">$125K allocation cap</span>
               </div>
             </div>

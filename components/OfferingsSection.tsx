@@ -4,19 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import {
-  TrendingUp,
-  ShieldCheck,
   Calendar,
   DollarSign,
-  Users,
   CheckCircle2,
   Lock,
-  ArrowRight,
   AlertCircle,
   Loader2,
-  Sparkles,
-  Info,
-  Activity,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -30,6 +25,63 @@ type OfferingsSectionProps = {
   initialVerificationStatus?: string | null;
   isSignedIn?: boolean;
 };
+
+type ActiveOffering = {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  closingDate: string;
+  valuation: string;
+  valuationSub: string;
+  fundingGoal: string;
+  goalSub: string;
+  minCheck: string;
+  minCheckSub: string;
+  minCheckNum: number;
+  eligibility: string;
+  eligibilitySub: string;
+  roundType: string;
+};
+
+const ACTIVE_OFFERINGS: ActiveOffering[] = [
+  {
+    id: "micro1-inc",
+    name: "Micro1 Inc.",
+    badge: "Active SPV Allocation",
+    description:
+      "Micro1 provides AI-driven technical hiring and engineer vetting infrastructure, powering developer teams at top hyper-growth tech companies.",
+    closingDate: "Oct 8, 2026",
+    valuation: "<$4B",
+    valuationSub: "Pre-money round",
+    fundingGoal: "$125K",
+    goalSub: "Allocation cap",
+    minCheck: "$5K",
+    minCheckSub: "USD accredited entry",
+    minCheckNum: 5000,
+    eligibility: "Accredited",
+    eligibilitySub: "SEC 506(c)",
+    roundType: "Direct Equity SPV",
+  },
+  {
+    id: "cursor-anysphere",
+    name: "Cursor (Anysphere)",
+    badge: "Series A/B SPV Allocation",
+    description:
+      "Cursor (Anysphere) is the AI-first code editor and development environment transforming software creation with autonomous developer agent infrastructure.",
+    closingDate: "Oct 15, 2026",
+    valuation: "$2.5B",
+    valuationSub: "Series A/B round",
+    fundingGoal: "$150K",
+    goalSub: "Allocation cap",
+    minCheck: "$5K",
+    minCheckSub: "USD accredited entry",
+    minCheckNum: 5000,
+    eligibility: "Accredited",
+    eligibilitySub: "SEC 506(c)",
+    roundType: "Growth SPV Series",
+  },
+];
 
 export default function OfferingsSection({
   initialVerificationStatus,
@@ -46,13 +98,14 @@ export default function OfferingsSection({
 
   // Commit Dialog State
   const [commitModalOpen, setCommitModalOpen] = useState(false);
+  const [selectedOffering, setSelectedOffering] = useState<ActiveOffering>(ACTIVE_OFFERINGS[0]);
   const [commitAmount, setCommitAmount] = useState("5000");
   const [commitError, setCommitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Interest loading state
-  const [isExpressingInterest, setIsExpressingInterest] = useState(false);
+  const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null);
 
   // Fetch current user state & interactions when clerk auth state changes
   useEffect(() => {
@@ -97,11 +150,11 @@ export default function OfferingsSection({
   const isPending = isSignedIn && verificationStatus !== "verified";
 
   // Handle "I'm Interested" action
-  async function handleExpressInterest(offeringId: string) {
+  async function handleExpressInterest(offeringId: string, offeringName: string) {
     if (!isSignedIn) return;
     if (!isVerified) return;
 
-    setIsExpressingInterest(true);
+    setExpressingInterestId(offeringId);
     setSuccessMessage(null);
 
     try {
@@ -122,13 +175,26 @@ export default function OfferingsSection({
         [offeringId]: { type: "interest", amount: null },
       }));
 
-      setSuccessMessage("Interest successfully recorded. Our syndicate partners will keep you updated on allocations.");
+      setSuccessMessage(`Interest recorded for ${offeringName}. Our syndicate partners will keep you updated on allocations.`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       alert(err.message || "Failed to record interest.");
     } finally {
-      setIsExpressingInterest(false);
+      setExpressingInterestId(null);
     }
+  }
+
+  // Open Commit Modal for a specific offering
+  function openCommitModal(offering: ActiveOffering) {
+    setSelectedOffering(offering);
+    const userInteraction = interactions[offering.id];
+    if (userInteraction?.amount) {
+      setCommitAmount(userInteraction.amount.toString());
+    } else {
+      setCommitAmount(offering.minCheckNum.toString());
+    }
+    setCommitError(null);
+    setCommitModalOpen(true);
   }
 
   // Handle Commit Capital action
@@ -137,7 +203,7 @@ export default function OfferingsSection({
     setCommitError(null);
 
     const amountNum = Number(commitAmount);
-    const minAmount = 5000;
+    const minAmount = selectedOffering.minCheckNum;
 
     if (isNaN(amountNum) || amountNum < minAmount) {
       setCommitError(`Minimum investment is $${minAmount.toLocaleString()} USD.`);
@@ -151,7 +217,7 @@ export default function OfferingsSection({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          offeringId: "micro1-inc",
+          offeringId: selectedOffering.id,
           type: "commitment",
           amount: amountNum,
         }),
@@ -165,29 +231,17 @@ export default function OfferingsSection({
 
       setInteractions((prev) => ({
         ...prev,
-        "micro1-inc": { type: "commitment", amount: amountNum },
+        [selectedOffering.id]: { type: "commitment", amount: amountNum },
       }));
 
       setCommitModalOpen(false);
-      setSuccessMessage(`Commitment of $${amountNum.toLocaleString()} USD submitted successfully.`);
+      setSuccessMessage(`Commitment of $${amountNum.toLocaleString()} USD for ${selectedOffering.name} submitted successfully.`);
       setTimeout(() => setSuccessMessage(null), 6000);
     } catch (err: any) {
       setCommitError(err.message || "Unable to submit commitment.");
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  const micro1Interaction = interactions["micro1-inc"];
-
-  function openCommitModal() {
-    if (micro1Interaction?.amount) {
-      setCommitAmount(micro1Interaction.amount.toString());
-    } else {
-      setCommitAmount("5000");
-    }
-    setCommitError(null);
-    setCommitModalOpen(true);
   }
 
   return (
@@ -218,7 +272,7 @@ export default function OfferingsSection({
             )}
           >
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Current Deal (1)
+            Current Deals ({ACTIVE_OFFERINGS.length})
           </button>
           <button
             onClick={() => setActiveTab("past")}
@@ -245,196 +299,246 @@ export default function OfferingsSection({
       {/* TAB CONTENT: CURRENT OFFERINGS */}
       {activeTab === "current" && (
         <div className="space-y-6">
-          {/* Main Micro1 Card */}
-          <div className="rounded-2xl border border-border bg-card text-card-foreground p-6 sm:p-8 shadow-xs relative">
-            {/* Top Badge Strip */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-border text-xs">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20 uppercase tracking-wider text-[11px]">
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  Active Offering
-                </span>
-              </div>
+          {ACTIVE_OFFERINGS.map((offering) => {
+            const userInteraction = interactions[offering.id];
+            const isExpressing = expressingInterestId === offering.id;
 
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="size-3.5" />
-                <span>Closing: <strong className="text-foreground font-semibold">Sept 30, 2026</strong></span>
-              </div>
-            </div>
-
-            {/* Main Info */}
-            <div className="mt-7 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              <div className="lg:col-span-7 space-y-5">
-                <div className="space-y-1.5">
-                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">
-                    Active SPV Allocation
-                  </p>
-                  <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-                    Micro1 Inc.
-                  </h3>
-                </div>
-
-                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-                  Micro1 provides AI-driven technical hiring and engineer vetting infrastructure, powering developer teams at top hyper-growth tech companies.
-                </p>
-
-                {/* Key Offering Terms Grid - High Legibility */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-2">
-                  <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Valuation
+            return (
+              <div
+                key={offering.id}
+                className="rounded-2xl border border-border bg-card text-card-foreground p-6 sm:p-8 shadow-xs relative"
+              >
+                {/* Top Badge Strip */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-border text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20 uppercase tracking-wider text-[11px]">
+                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                      Active Offering
                     </span>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
-                      $3.7B
-                    </p>
-                    <span className="text-xs text-muted-foreground">Pre-money round</span>
+                    <span className="text-muted-foreground hidden sm:inline">·</span>
+                    <span className="text-muted-foreground font-medium hidden sm:inline">
+                      {offering.roundType}
+                    </span>
                   </div>
 
-                  <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Funding Goal
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="size-3.5" />
+                    <span>
+                      Closing:{" "}
+                      <strong className="text-foreground font-semibold">
+                        {offering.closingDate}
+                      </strong>
                     </span>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
-                      $125K
-                    </p>
-                    <span className="text-xs text-muted-foreground">Allocation cap</span>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Minimum Check
-                    </span>
-                    <p className="text-xl font-bold text-foreground tabular-nums">
-                      $5K
-                    </p>
-                    <span className="text-xs text-muted-foreground">USD accredited entry</span>
-                  </div>
-
-                  <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Eligibility
-                    </span>
-                    <p className="text-xl font-bold text-foreground">
-                      Accredited
-                    </p>
-                    <span className="text-xs text-muted-foreground">SEC 506(c)</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Action Box / Status Panel */}
-              <div className="lg:col-span-5 rounded-2xl border border-border bg-muted/30 p-6 space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Participation Status
-                  </span>
-                  {isVerified ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-                      <CheckCircle2 className="size-3.5" />
-                      Verified Investor
-                    </span>
-                  ) : isSignedIn ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold">
-                      <AlertCircle className="size-3.5" />
-                      Verification Pending
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-bold">
-                      <Lock className="size-3.5" />
-                      Public Preview
-                    </span>
-                  )}
-                </div>
-
-                {/* State-specific CTA / Notice */}
-                {!isSignedIn ? (
-                  <div className="space-y-4 pt-1">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      To express interest or commit capital to Micro1 Inc., sign in with your accredited investor account.
-                    </p>
-                    <div>
-                      <Button asChild className="w-full h-11 rounded-full font-bold text-sm tracking-wide shadow-xs">
-                        <Link href="/sign-in">Log in to participate</Link>
-                      </Button>
-                    </div>
-                  </div>
-                ) : isPending ? (
-                  <div className="space-y-4 pt-1">
-                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-300 leading-relaxed space-y-2">
-                      <div className="flex items-center gap-2 font-bold">
-                        <AlertCircle className="size-4 shrink-0 text-amber-500" />
-                        Verification in Review
-                      </div>
-                      <p className="text-xs">
-                        Your accredited profile is pending admin approval. Once approved, you can commit capital directly.
+                {/* Main Info */}
+                <div className="mt-7 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  <div className="lg:col-span-7 space-y-5">
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">
+                        {offering.badge}
                       </p>
+                      <h3 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                        {offering.name}
+                      </h3>
                     </div>
-                    <Button asChild variant="outline" className="w-full h-11 rounded-full text-xs font-bold uppercase tracking-wider">
-                      <Link href="/profile">Review Investor Profile</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4 pt-1">
-                    {/* User has committed or expressed interest banner */}
-                    {micro1Interaction?.type === "commitment" ? (
-                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-300 space-y-1.5">
-                        <span className="text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold block">
-                          Active Allocation Request
+
+                    <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                      {offering.description}
+                    </p>
+
+                    {/* Key Offering Terms Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-2">
+                      <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                          Valuation
+                        </span>
+                        <p className="text-xl font-bold text-foreground tabular-nums">
+                          {offering.valuation}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {offering.valuationSub}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                          Funding Goal
+                        </span>
+                        <p className="text-xl font-bold text-foreground tabular-nums">
+                          {offering.fundingGoal}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {offering.goalSub}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                          Minimum Check
+                        </span>
+                        <p className="text-xl font-bold text-foreground tabular-nums">
+                          {offering.minCheck}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {offering.minCheckSub}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                          Eligibility
                         </span>
                         <p className="text-xl font-bold text-foreground">
-                          ${micro1Interaction.amount?.toLocaleString()} USD Committed
+                          {offering.eligibility}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Our closing team will provide wire instructions and subscription documents prior to the deadline.
-                        </p>
-                      </div>
-                    ) : micro1Interaction?.type === "interest" ? (
-                      <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 text-blue-900 dark:text-blue-300 space-y-1 text-sm">
-                        <div className="flex items-center gap-2 font-bold">
-                          <CheckCircle2 className="size-4 text-blue-500" />
-                          Interest Recorded
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          You are on the priority list. You can also formalize your dollar commitment below.
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {/* Action Buttons for Verified User */}
-                    <div className="flex flex-col gap-2.5 w-full">
-                      <Button
-                        onClick={openCommitModal}
-                        className="w-full h-11 px-4 rounded-full text-xs font-bold uppercase tracking-wider shadow-xs inline-flex items-center justify-center gap-2"
-                      >
-                        <DollarSign className="size-4" />
-                        <span>
-                          {micro1Interaction?.type === "commitment" ? "Update Commitment" : "Commit Capital"}
+                        <span className="text-xs text-muted-foreground">
+                          {offering.eligibilitySub}
                         </span>
-                      </Button>
-
-                      {micro1Interaction?.type !== "commitment" && (
-                        <Button
-                          variant={micro1Interaction?.type === "interest" ? "secondary" : "outline"}
-                          onClick={() => handleExpressInterest("micro1-inc")}
-                          disabled={isExpressingInterest}
-                          className="w-full h-11 px-4 rounded-full text-xs font-bold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-2"
-                        >
-                          {isExpressingInterest ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : micro1Interaction?.type === "interest" ? (
-                            <CheckCircle2 className="size-4 text-primary" />
-                          ) : null}
-                          <span>
-                            {micro1Interaction?.type === "interest" ? "Interested ✓" : "I'm Interested"}
-                          </span>
-                        </Button>
-                      )}
+                      </div>
                     </div>
                   </div>
-                )}
+
+                  {/* Action Box / Status Panel */}
+                  <div className="lg:col-span-5 rounded-2xl border border-border bg-muted/30 p-6 space-y-5">
+                    <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Participation Status
+                      </span>
+                      {isVerified ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                          <CheckCircle2 className="size-3.5" />
+                          Verified Investor
+                        </span>
+                      ) : isSignedIn ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold">
+                          <AlertCircle className="size-3.5" />
+                          Verification Pending
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-bold">
+                          <Lock className="size-3.5" />
+                          Public Preview
+                        </span>
+                      )}
+                    </div>
+
+                    {/* State-specific CTA / Notice */}
+                    {!isSignedIn ? (
+                      <div className="space-y-4 pt-1">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          To express interest or commit capital to {offering.name}, sign in with your accredited investor account.
+                        </p>
+                        <div>
+                          <Button asChild className="w-full h-11 rounded-full font-bold text-sm tracking-wide shadow-xs">
+                            <Link href="/sign-in">Log in to participate</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ) : isPending ? (
+                      <div className="space-y-4 pt-1">
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-300 leading-relaxed space-y-2">
+                          <div className="flex items-center gap-2 font-bold">
+                            <AlertCircle className="size-4 shrink-0 text-amber-500" />
+                            Verification in Review
+                          </div>
+                          <p className="text-xs">
+                            Your accredited profile is pending admin approval. Once approved, you can commit capital directly.
+                          </p>
+                        </div>
+
+                        {/* Direct Contact Admin Options */}
+                        <div className="rounded-xl border border-border bg-card p-3.5 space-y-2.5 text-xs">
+                          <span className="font-semibold text-foreground text-[11px] uppercase tracking-wider block">
+                            Contact Admin / Expedite:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <a
+                              href="mailto:syndicate@apexkrishcapital.com?subject=Accredited%20Investor%20Verification%20Inquiry"
+                              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground transition font-medium text-xs text-center"
+                            >
+                              <Mail className="size-3.5 text-muted-foreground shrink-0" />
+                              <span>Email Admin</span>
+                            </a>
+                            <a
+                              href="tel:7208456839"
+                              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground transition font-medium text-xs text-center"
+                            >
+                              <Phone className="size-3.5 text-muted-foreground shrink-0" />
+                              <span>720-845-6839</span>
+                            </a>
+                          </div>
+                        </div>
+
+                        <Button asChild variant="outline" className="w-full h-11 rounded-full text-xs font-bold uppercase tracking-wider">
+                          <Link href="/profile">Review Investor Profile</Link>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 pt-1">
+                        {/* User has committed or expressed interest banner */}
+                        {userInteraction?.type === "commitment" ? (
+                          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-300 space-y-1.5">
+                            <span className="text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold block">
+                              Active Allocation Request
+                            </span>
+                            <p className="text-xl font-bold text-foreground">
+                              ${userInteraction.amount?.toLocaleString()} USD Committed
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Our closing team will provide wire instructions and subscription documents prior to the deadline.
+                            </p>
+                          </div>
+                        ) : userInteraction?.type === "interest" ? (
+                          <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 text-blue-900 dark:text-blue-300 space-y-1 text-sm">
+                            <div className="flex items-center gap-2 font-bold">
+                              <CheckCircle2 className="size-4 text-blue-500" />
+                              Interest Recorded
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              You are on the priority list. You can also formalize your dollar commitment below.
+                            </p>
+                          </div>
+                        ) : null}
+
+                        {/* Action Buttons for Verified User */}
+                        <div className="flex flex-col gap-2.5 w-full">
+                          <Button
+                            onClick={() => openCommitModal(offering)}
+                            className="w-full h-11 px-4 rounded-full text-xs font-bold uppercase tracking-wider shadow-xs inline-flex items-center justify-center gap-2"
+                          >
+                            <DollarSign className="size-4" />
+                            <span>
+                              {userInteraction?.type === "commitment" ? "Update Commitment" : "Commit Capital"}
+                            </span>
+                          </Button>
+
+                          {userInteraction?.type !== "commitment" && (
+                            <Button
+                              variant={userInteraction?.type === "interest" ? "secondary" : "outline"}
+                              onClick={() => handleExpressInterest(offering.id, offering.name)}
+                              disabled={isExpressing}
+                              className="w-full h-11 px-4 rounded-full text-xs font-bold uppercase tracking-wider transition-all inline-flex items-center justify-center gap-2"
+                            >
+                              {isExpressing ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : userInteraction?.type === "interest" ? (
+                                <CheckCircle2 className="size-4 text-primary" />
+                              ) : null}
+                              <span>
+                                {userInteraction?.type === "interest" ? "Interested ✓" : "I'm Interested"}
+                              </span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
 
@@ -534,10 +638,12 @@ export default function OfferingsSection({
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div>
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                  {micro1Interaction?.type === "commitment" ? "Update Allocation Commitment" : "Capital Commitment"}
+                  {interactions[selectedOffering.id]?.type === "commitment"
+                    ? "Update Allocation Commitment"
+                    : "Capital Commitment"}
                 </span>
                 <h3 className="text-lg font-bold text-foreground mt-0.5">
-                  Micro1 Inc. SPV Series
+                  {selectedOffering.name} SPV Series
                 </h3>
               </div>
               <button
@@ -553,15 +659,15 @@ export default function OfferingsSection({
             <div className="rounded-xl border border-border bg-muted/40 p-3.5 text-xs text-muted-foreground space-y-1">
               <div className="flex justify-between">
                 <span>Minimum Investment:</span>
-                <strong className="text-foreground">$5,000 USD</strong>
+                <strong className="text-foreground">${selectedOffering.minCheckNum.toLocaleString()} USD</strong>
               </div>
               <div className="flex justify-between">
                 <span>Funding Deadline:</span>
-                <strong className="text-foreground">Sept 30th, 2026</strong>
+                <strong className="text-foreground">{selectedOffering.closingDate}</strong>
               </div>
               <div className="flex justify-between">
-                <span>Pre-money Valuation:</span>
-                <strong className="text-foreground">$3.7B USD</strong>
+                <span>Valuation:</span>
+                <strong className="text-foreground">{selectedOffering.valuation} USD</strong>
               </div>
             </div>
 
@@ -576,14 +682,14 @@ export default function OfferingsSection({
                   </span>
                   <input
                     type="number"
-                    min="5000"
+                    min={selectedOffering.minCheckNum}
                     step="1000"
                     value={commitAmount}
                     onChange={(e) => {
                       setCommitAmount(e.target.value);
                       if (commitError) setCommitError(null);
                     }}
-                    placeholder="5000"
+                    placeholder={selectedOffering.minCheckNum.toString()}
                     className="w-full h-12 pl-8 pr-4 rounded-xl border border-input bg-background text-base font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-primary tabular-nums"
                   />
                 </div>
@@ -591,7 +697,7 @@ export default function OfferingsSection({
 
               {/* Amount Quick Presets */}
               <div className="flex flex-wrap gap-2">
-                {[5000, 10000, 25000, 50000].map((preset) => (
+                {[selectedOffering.minCheckNum, 10000, 25000, 50000].map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -638,7 +744,7 @@ export default function OfferingsSection({
                       <Loader2 className="size-3.5 animate-spin mr-2" />
                       Recording...
                     </>
-                  ) : micro1Interaction?.type === "commitment" ? (
+                  ) : interactions[selectedOffering.id]?.type === "commitment" ? (
                     "Update Commitment"
                   ) : (
                     "Confirm Commitment"
@@ -652,4 +758,3 @@ export default function OfferingsSection({
     </section>
   );
 }
-
