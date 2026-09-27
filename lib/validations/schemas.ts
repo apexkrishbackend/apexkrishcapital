@@ -1,23 +1,38 @@
 import { z } from "zod";
 
 /**
- * Clean & sanitize text strings (strip potential HTML/script injection)
+ * Clean & sanitize text strings (strip potential HTML/script tags)
  */
-export const sanitizedString = (maxLen = 500) =>
-  z
-    .string()
-    .trim()
-    .max(maxLen, `Must be under ${maxLen} characters`)
-    .transform((val) => val.replace(/<[^>]*>?/gm, "")); // strip HTML tags
+export const cleanText = (val: string) => val.replace(/<[^>]*>?/gm, "").trim();
+
+/**
+ * Helper to build a sanitized string schema with length constraints
+ */
+export function sanitizeString(options: { min?: number; max?: number; requiredError?: string; minError?: string }) {
+  let schema = z.string({ required_error: options.requiredError }).trim();
+  if (options.min !== undefined && options.min > 0) {
+    schema = schema.min(options.min, options.minError || options.requiredError || `Must be at least ${options.min} characters`);
+  }
+  if (options.max !== undefined) {
+    schema = schema.max(options.max, `Must be under ${options.max} characters`);
+  }
+  return schema.transform(cleanText);
+}
 
 /**
  * Founder / Company Application Validation Schema
  */
 export const companyApplicationSchema = z.object({
-  companyName: sanitizedString(150).min(1, "Company Name is required"),
-  founderName: sanitizedString(150).min(1, "Founder Name is required"),
+  companyName: sanitizeString({ min: 1, max: 150, requiredError: "Company Name is required" }),
+  founderName: sanitizeString({ min: 1, max: 150, requiredError: "Founder Name is required" }),
   workEmail: z.string().trim().email("Invalid email address").max(254).toLowerCase(),
-  phoneNumber: sanitizedString(50).optional().nullable(),
+  phoneNumber: z
+    .string()
+    .trim()
+    .max(50)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? cleanText(v) : v)),
   websiteUrl: z
     .string()
     .trim()
@@ -36,19 +51,25 @@ export const companyApplicationSchema = z.object({
     .refine((val) => !val || /^https?:\/\//i.test(val), {
       message: "Pitch deck link must begin with http:// or https://",
     }),
-  stage: sanitizedString(50).default("Series A"),
-  targetRaiseAmount: sanitizedString(100).min(1, "Target Raise is required"),
-  currentArr: sanitizedString(100).optional().nullable(),
-  sector: sanitizedString(100).default("AI & Machine Learning"),
-  summary: sanitizedString(3000).min(10, "Summary must be at least 10 characters"),
+  stage: z.string().trim().max(50).default("Series A").transform(cleanText),
+  targetRaiseAmount: sanitizeString({ min: 1, max: 100, requiredError: "Target Raise is required" }),
+  currentArr: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? cleanText(v) : v)),
+  sector: z.string().trim().max(100).default("AI & Machine Learning").transform(cleanText),
+  summary: sanitizeString({ min: 10, max: 3000, requiredError: "Summary is required", minError: "Summary must be at least 10 characters" }),
 });
 
 /**
  * Commitment & Interest Validation Schema
  */
 export const commitmentSchema = z.object({
-  offeringId: sanitizedString(100).min(1, "Offering ID is required"),
-  offeringTitle: sanitizedString(200).min(1, "Offering Title is required"),
+  offeringId: sanitizeString({ min: 1, max: 100, requiredError: "Offering ID is required" }),
+  offeringTitle: sanitizeString({ min: 1, max: 200, requiredError: "Offering Title is required" }),
   type: z.enum(["interest", "commitment"]),
   amount: z
     .number()
@@ -56,15 +77,26 @@ export const commitmentSchema = z.object({
     .max(100000000, "Commitment amount cannot exceed $100M")
     .optional()
     .nullable(),
-  notes: sanitizedString(1000).optional().nullable(),
+  notes: z
+    .string()
+    .trim()
+    .max(1000)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? cleanText(v) : v)),
 });
 
 /**
  * Admin Broadcast Validation Schema
  */
 export const broadcastSchema = z.object({
-  offeringId: sanitizedString(100).min(1, "Offering ID is required"),
-  offeringTitle: sanitizedString(200).optional(),
+  offeringId: sanitizeString({ min: 1, max: 100, requiredError: "Offering ID is required" }),
+  offeringTitle: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((v) => (v ? cleanText(v) : v)),
   targetAudience: z.enum([
     "interests_only",
     "commitments_only",
@@ -82,8 +114,8 @@ export const broadcastSchema = z.object({
     .refine((val) => /^https?:\/\//i.test(val), {
       message: "URL must begin with http:// or https://",
     }),
-  subject: sanitizedString(250).min(1, "Subject is required"),
-  customMessage: sanitizedString(5000).optional().default(""),
+  subject: sanitizeString({ min: 1, max: 250, requiredError: "Subject is required" }),
+  customMessage: z.string().trim().max(5000).optional().default("").transform(cleanText),
   channel: z.enum(["email", "whatsapp", "both"]).optional(),
   sendEmail: z.boolean().optional().default(false),
   sendWhatsApp: z.boolean().optional().default(false),
