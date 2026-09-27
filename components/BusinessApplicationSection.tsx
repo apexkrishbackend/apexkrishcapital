@@ -9,6 +9,13 @@ import {
 } from "@/components/ui/expandable-screen";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Building2,
   Sparkles,
   ArrowRight,
@@ -378,35 +385,43 @@ export default function BusinessApplicationSection() {
                           <label className="text-xs font-semibold text-foreground">
                             Target Syndicate Allocation ($) <span className="text-destructive">*</span>
                           </label>
-                          <select
+                          <Select
                             value={formData.targetRaiseAmount}
-                            onChange={(e) => setFormData({ ...formData, targetRaiseAmount: e.target.value })}
-                            className="w-full rounded-xl border border-border bg-background py-2.5 px-3.5 text-sm focus:border-primary focus:outline-none"
+                            onValueChange={(val) => setFormData({ ...formData, targetRaiseAmount: val })}
                           >
-                            <option value="$250,000 - $500,000">$250K – $500K</option>
-                            <option value="$500,000 - $1,000,000">$500K – $1.0M</option>
-                            <option value="$1,000,000 - $3,000,000">$1.0M – $3.0M</option>
-                            <option value="$3,000,000 - $5,000,000">$3.0M – $5.0M</option>
-                            <option value="$5,000,000+">$5.0M+</option>
-                          </select>
+                            <SelectTrigger className="w-full rounded-xl border border-border bg-background py-2.5 px-3.5 text-sm h-11 focus:border-primary focus:outline-none">
+                              <SelectValue placeholder="Select target allocation" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="$250,000 - $500,000">$250K – $500K</SelectItem>
+                              <SelectItem value="$500,000 - $1,000,000">$500K – $1.0M</SelectItem>
+                              <SelectItem value="$1,000,000 - $3,000,000">$1.0M – $3.0M</SelectItem>
+                              <SelectItem value="$3,000,000 - $5,000,000">$3.0M – $5.0M</SelectItem>
+                              <SelectItem value="$5,000,000+">$5.0M+</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div className="space-y-1.5">
                           <label className="text-xs font-semibold text-foreground">
                             Current Revenue / ARR
                           </label>
-                          <select
+                          <Select
                             value={formData.currentArr}
-                            onChange={(e) => setFormData({ ...formData, currentArr: e.target.value })}
-                            className="w-full rounded-xl border border-border bg-background py-2.5 px-3.5 text-sm focus:border-primary focus:outline-none"
+                            onValueChange={(val) => setFormData({ ...formData, currentArr: val })}
                           >
-                            <option value="Pre-Revenue / In Beta">Pre-Revenue / In Beta</option>
-                            <option value="< $500K ARR">&lt; $500K ARR</option>
-                            <option value="$500K - $1M ARR">$500K – $1M ARR</option>
-                            <option value="$1M - $5M ARR">$1M – $5M ARR</option>
-                            <option value="$5M - $10M ARR">$5M – $10M ARR</option>
-                            <option value="$10M+ ARR">$10M+ ARR</option>
-                          </select>
+                            <SelectTrigger className="w-full rounded-xl border border-border bg-background py-2.5 px-3.5 text-sm h-11 focus:border-primary focus:outline-none">
+                              <SelectValue placeholder="Select revenue / ARR" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pre-Revenue / In Beta">Pre-Revenue / In Beta</SelectItem>
+                              <SelectItem value="< $500K ARR">&lt; $500K ARR</SelectItem>
+                              <SelectItem value="$500K - $1M ARR">$500K – $1M ARR</SelectItem>
+                              <SelectItem value="$1M - $5M ARR">$1M – $5M ARR</SelectItem>
+                              <SelectItem value="$5M - $10M ARR">$5M – $10M ARR</SelectItem>
+                              <SelectItem value="$10M+ ARR">$10M+ ARR</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
 
@@ -415,15 +430,21 @@ export default function BusinessApplicationSection() {
                         <label className="text-xs font-semibold text-foreground">
                           Primary Sector
                         </label>
-                        <select
+                        <Select
                           value={formData.sector}
-                          onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                          className="w-full rounded-xl border border-border bg-background py-2.5 px-3.5 text-sm focus:border-primary focus:outline-none"
+                          onValueChange={(val) => setFormData({ ...formData, sector: val })}
                         >
-                          {SECTORS.map((sec) => (
-                            <option key={sec} value={sec}>{sec}</option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="w-full rounded-xl border border-border bg-background py-2.5 px-3.5 text-sm h-11 focus:border-primary focus:outline-none">
+                            <SelectValue placeholder="Select primary sector" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SECTORS.map((sec) => (
+                              <SelectItem key={sec} value={sec}>
+                                {sec}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Pitch Deck URL */}

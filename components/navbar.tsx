@@ -89,7 +89,7 @@ export default function Navbar() {
         <div
           className={cn(
             "relative w-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            isScrolled ? "max-w-[720px]" : "max-w-[800px]"
+            isScrolled ? "max-w-[960px]" : "max-w-[1080px]"
           )}
         >
           {/* Scroll-Adaptive Liquid Glass Shell */}
@@ -150,16 +150,29 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* DUAL-PERSONA MICRO-TOGGLE (INVESTORS vs FOUNDERS) */}
-            <div className="hidden md:flex items-center gap-2.5 relative z-10">
+            {/* Center Navigation Links & DUAL-PERSONA MICRO-TOGGLE */}
+            <div className="hidden md:flex items-center gap-2.5 lg:gap-3.5 relative z-10">
+              <Link
+                href="/investor-education"
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
+                  pathname === "/investor-education"
+                    ? "bg-foreground/10 text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                )}
+              >
+                Investor Education
+              </Link>
+
+              {/* DUAL-PERSONA MICRO-TOGGLE (INVESTORS vs FOUNDERS) */}
               <div className="relative flex items-center p-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.1] text-[13.5px] font-medium backdrop-blur-md">
                 {/* Sliding Spring Capsule for Persona */}
                 <div
                   className={cn(
                     "absolute top-1 bottom-1 rounded-full bg-white dark:bg-white/[0.16] shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                    activePersona === "investors" && !pathname?.startsWith("/admin")
+                    activePersona === "investors" && !pathname?.startsWith("/admin") && pathname !== "/investor-education"
                       ? "left-1 w-[105px] opacity-100"
-                      : activePersona === "founders" && !pathname?.startsWith("/admin")
+                      : activePersona === "founders" && !pathname?.startsWith("/admin") && pathname !== "/investor-education"
                       ? "left-[110px] w-[108px] opacity-100"
                       : "opacity-0 pointer-events-none"
                   )}
@@ -170,7 +183,7 @@ export default function Navbar() {
                   onClick={handleSelectInvestors}
                   className={cn(
                     "relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-colors duration-200 cursor-pointer whitespace-nowrap",
-                    activePersona === "investors" && !pathname?.startsWith("/admin")
+                    activePersona === "investors" && !pathname?.startsWith("/admin") && pathname !== "/investor-education"
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -184,7 +197,7 @@ export default function Navbar() {
                   onClick={handleSelectFounders}
                   className={cn(
                     "relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-colors duration-200 cursor-pointer whitespace-nowrap",
-                    activePersona === "founders" && !pathname?.startsWith("/admin")
+                    activePersona === "founders" && !pathname?.startsWith("/admin") && pathname !== "/investor-education"
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -295,6 +308,15 @@ export default function Navbar() {
 
             {/* Nav Links */}
             <div className="flex flex-col gap-1 pt-1">
+              <Link
+                href="/investor-education"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between py-2 text-[15px] font-medium text-foreground hover:text-primary transition-colors"
+              >
+                <span>Investor Education</span>
+                <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
               <Link
                 href="/aboutus"
                 onClick={() => setMobileMenuOpen(false)}

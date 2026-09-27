@@ -312,7 +312,9 @@ export default function AdminPage() {
   const [previewRecipients, setPreviewRecipients] = useState<BroadcastPreviewRecipient[]>([])
   const [recipientSearchQuery, setRecipientSearchQuery] = useState('')
   const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
   const [emailBroadcastSuccess, setEmailBroadcastSuccess] = useState<string | null>(null)
+  const [whatsAppBroadcastSuccess, setWhatsAppBroadcastSuccess] = useState<string | null>(null)
   const [copiedTemplate, setCopiedTemplate] = useState(false)
   const [openedWhatsAppUsers, setOpenedWhatsAppUsers] = useState<string[]>([])
 
@@ -387,6 +389,7 @@ export default function AdminPage() {
     setBroadcastAudience('interests_only')
     setBroadcastVerifiedOnly(false)
     setEmailBroadcastSuccess(null)
+    setWhatsAppBroadcastSuccess(null)
     setCopiedTemplate(false)
     setOpenedWhatsAppUsers([])
     setRecipientSearchQuery('')
@@ -480,6 +483,44 @@ export default function AdminPage() {
       alert(err instanceof Error ? err.message : 'Email broadcast failed.')
     } finally {
       setIsSendingEmail(false)
+    }
+  }
+
+  // Log WhatsApp Broadcast
+  async function handleLogWhatsAppBroadcast() {
+    if (!broadcastOffering) return
+    if (!thirdPartyUrl.trim()) {
+      alert('Please enter a valid closing portal URL.')
+      return
+    }
+
+    setIsSendingWhatsApp(true)
+    setWhatsAppBroadcastSuccess(null)
+    try {
+      const res = await fetch('/api/admin/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offeringId: broadcastOffering.offeringId,
+          offeringTitle: broadcastOffering.title,
+          targetAudience: broadcastAudience,
+          verifiedOnly: broadcastVerifiedOnly,
+          thirdPartyUrl: thirdPartyUrl.trim(),
+          subject: broadcastSubject.trim(),
+          customMessage: customMessage.trim(),
+          sendEmail: false,
+          sendWhatsApp: true,
+          channel: 'whatsapp',
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to log WhatsApp broadcast.')
+      setWhatsAppBroadcastSuccess(`WhatsApp broadcast activity logged for ${data.whatsappProcessed} recipient(s).`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'WhatsApp logging failed.')
+    } finally {
+      setIsSendingWhatsApp(false)
     }
   }
 
@@ -1926,6 +1967,55 @@ export default function AdminPage() {
                       <h4 className="font-bold text-sm text-foreground">WhatsApp Broadcast</h4>
                     </div>
 
+                    {whatsAppBroadcastSuccess && (
+                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+                        <CheckCheck className="size-4 shrink-0" />
+                        <span>{whatsAppBroadcastSuccess}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyWhatsAppTemplate}
+                        disabled={!thirdPartyUrl.trim()}
+                        className="rounded-xl text-xs font-semibold gap-1.5 h-9.5 border-border"
+                      >
+                        {copiedTemplate ? (
+                          <>
+                            <Check className="size-3.5 text-emerald-500" />
+                            <span className="text-emerald-600 dark:text-emerald-400">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="size-3.5" />
+                            <span>Copy Template</span>
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleLogWhatsAppBroadcast}
+                        disabled={isSendingWhatsApp || previewRecipients.filter(r => r.hasValidPhone).length === 0 || !thirdPartyUrl.trim() || isPreviewLoading}
+                        className="rounded-xl text-xs font-semibold gap-1.5 h-9.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                      >
+                        {isSendingWhatsApp ? (
+                          <>
+                            <Loader2 className="size-3.5 animate-spin" />
+                            <span>Logging...</span>
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="size-3.5" />
+                            <span>Log WhatsApp</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     <Button
                       type="button"
                       variant="outline"

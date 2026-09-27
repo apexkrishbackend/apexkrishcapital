@@ -107,3 +107,4 @@ if (mongoose.models && mongoose.models.BroadcastLog) {
 
 export default (mongoose.models.BroadcastLog as Model<IBroadcastLogDocument>) ||
   mongoose.model<IBroadcastLogDocument>("BroadcastLog", broadcastLogSchema);
+
