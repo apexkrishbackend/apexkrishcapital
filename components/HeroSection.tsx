@@ -79,15 +79,12 @@ export default function HeroSection() {
 
         {/* High-Contrast Conversion Headline */}
         <h1 className="text-4xl sm:text-6xl font-bold tracking-[-0.03em] text-foreground leading-[1.1]">
-          Direct investments in category-defining AI companies.{" "}
-          <span className="text-muted-foreground font-normal">
-            At half the standard fee.
-          </span>
+          Private capital for exceptional businesses.
         </h1>
 
         {/* Concise Narrative Value Proposition */}
         <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-3xl font-normal">
-          We source, diligence, and structure direct SPV allocations into high-conviction frontier tech companies—charging a 10% performance carry instead of the traditional 20%+.
+          Apex Krish Capital is a private investment syndicate giving accredited investors curated access to vetted private equity and early-stage opportunities.
         </p>
 
         {/* High-Intent CTAs */}
