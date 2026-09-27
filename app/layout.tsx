@@ -22,9 +22,65 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Apex Krish Capital | Frontier Technology & Private Equity Investments",
+  metadataBase: new URL("https://apexkrishcapital.com"),
+  title: {
+    default: "Apex Krish Capital | Private Equity & Frontier Tech Syndicate",
+    template: "%s | Apex Krish Capital",
+  },
   description:
-    "Apex Krish Capital identifies and curates high-conviction private market investments across AI, biotechnology, and advanced computing for accredited investors.",
+    "Apex Krish Capital is a private investment syndicate giving accredited investors curated access to vetted private equity and early-stage opportunities.",
+  keywords: [
+    "Apex Krish Capital",
+    "Apex Krish",
+    "Private Equity Syndicate",
+    "Accredited Investor SPV",
+    "AI Startup Investments",
+    "Frontier Tech Venture Capital",
+    "Pre-IPO Allocations",
+    "Direct SPV Investments",
+    "Qualified Purchaser Fund",
+  ],
+  authors: [{ name: "Apex Krish Capital", url: "https://apexkrishcapital.com" }],
+  creator: "Apex Krish Capital",
+  publisher: "Apex Krish Capital",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://apexkrishcapital.com",
+    siteName: "Apex Krish Capital",
+    title: "Apex Krish Capital | Private Equity & Frontier Tech Syndicate",
+    description:
+      "Curated access to vetted private equity and early-stage opportunities for accredited investors. 10% performance carry, zero management fees.",
+    images: [
+      {
+        url: "/apexkrishnalogo.png",
+        width: 1200,
+        height: 630,
+        alt: "Apex Krish Capital",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Apex Krish Capital | Private Equity Syndicate",
+    description:
+      "Curated access to vetted private equity and early-stage opportunities for accredited investors.",
+    images: ["/apexkrishnalogo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -65,6 +121,31 @@ export default function RootLayout({
                 } catch (e) {}
               })();
             `,
+          }}
+        />
+        {/* JSON-LD Structured Data Schema for Google Knowledge Graph & Rich Snippets */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": ["Organization", "FinancialService"],
+              "name": "Apex Krish Capital",
+              "url": "https://apexkrishcapital.com",
+              "logo": "https://apexkrishcapital.com/apexkrishnalogo.png",
+              "description": "Private investment syndicate giving accredited investors curated access to vetted private equity and early-stage opportunities.",
+              "email": "syndicate@apexkrishcapital.com",
+              "telephone": "+1-720-845-6839",
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Denver",
+                "addressRegion": "CO",
+                "addressCountry": "US"
+              },
+              "sameAs": [
+                "https://apexkrishcapital.com"
+              ]
+            }),
           }}
         />
       </head>

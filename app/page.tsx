@@ -174,19 +174,19 @@ export default function Home() {
         <section className="rounded-2xl border border-border bg-card p-6 sm:p-8 text-sm text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-5 font-medium">
           <div className="flex items-center gap-2.5">
             <Mail className="size-4 text-muted-foreground shrink-0" />
-            <a href="mailto:info@apexkrishcapital.com" className="text-foreground hover:underline">
-              info@apexkrishcapital.com
+            <a href="mailto:syndicate@apexkrishcapital.com" className="text-foreground hover:underline">
+              syndicate@apexkrishcapital.com
             </a>
           </div>
           <div className="flex items-center gap-2.5">
             <Phone className="size-4 text-muted-foreground shrink-0" />
-            <a href="tel:+17208456839" className="text-foreground hover:underline">
-              +1 (303) 945-6062
+            <a href="tel:7208456839" className="text-foreground hover:underline">
+              720-845-6839
             </a>
           </div>
           <div className="flex items-center gap-2.5">
             <MapPin className="size-4 text-muted-foreground shrink-0" />
-            <span className="text-foreground">10846 Glengate Cir, Littleton CO 80130 USA</span>
+            <span className="text-foreground">Denver, CO, USA</span>
           </div>
         </section>
       </main>
