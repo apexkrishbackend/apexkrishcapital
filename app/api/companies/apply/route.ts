@@ -1,10 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import CompanyApplication from "@/models/company-application.model";
+import { companyApplicationSchema } from "@/lib/validations/schemas";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    // 1. IP Rate Limiting (5 requests per hour)
+    const clientIp = getClientIp(req);
+    const limiter = rateLimit(`company_apply_${clientIp}`, {
+      limit: 5,
+      windowMs: 60 * 60 * 1000, // 1 hour
+    });
+
+    if (!limiter.success) {
+      return NextResponse.json(
+        {
+          error: `Too many submissions from this IP address. Please try again in ${limiter.reset} seconds.`,
+        },
+        { status: 429 }
+      );
+    }
+
+    // 2. Body parsing and Zod validation
+    const rawBody = await req.json();
+    const validation = companyApplicationSchema.safeParse(rawBody);
+
+    if (!validation.success) {
+      const errorMsg = validation.error.issues[0]?.message || "Invalid application payload.";
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
+    }
+
     const {
       companyName,
       founderName,
@@ -17,29 +43,22 @@ export async function POST(req: NextRequest) {
       currentArr,
       sector,
       summary,
-    } = body;
-
-    if (!companyName || !founderName || !workEmail || !targetRaiseAmount || !summary) {
-      return NextResponse.json(
-        { error: "Please provide all required fields (Company Name, Founder Name, Email, Target Raise, Summary)." },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     await dbConnect();
 
     const application = await CompanyApplication.create({
-      companyName: companyName.trim(),
-      founderName: founderName.trim(),
-      workEmail: workEmail.toLowerCase().trim(),
-      phoneNumber: phoneNumber ? phoneNumber.trim() : undefined,
-      websiteUrl: websiteUrl ? websiteUrl.trim() : undefined,
-      pitchDeckUrl: pitchDeckUrl ? pitchDeckUrl.trim() : undefined,
-      stage: stage || "Series A",
-      targetRaiseAmount: targetRaiseAmount.trim(),
-      currentArr: currentArr ? currentArr.trim() : undefined,
-      sector: sector || "AI & Frontier Tech",
-      summary: summary.trim(),
+      companyName,
+      founderName,
+      workEmail,
+      phoneNumber: phoneNumber || undefined,
+      websiteUrl: websiteUrl || undefined,
+      pitchDeckUrl: pitchDeckUrl || undefined,
+      stage,
+      targetRaiseAmount,
+      currentArr: currentArr || undefined,
+      sector,
+      summary,
       status: "pending_review",
     });
 

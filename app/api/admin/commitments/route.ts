@@ -4,6 +4,8 @@ import { dbConnect } from "@/lib/dbConnect";
 import Commitment from "@/models/commitment.model";
 import User from "@/models/user.model";
 import { OFFERINGS_CATALOG } from "@/lib/constants/offerings";
+import { logAdminAction } from "@/lib/audit-logger";
+import { getClientIp } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   const { userId, sessionClaims } = await auth();
@@ -254,6 +256,21 @@ export async function PATCH(req: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "Commitment not found" }, { status: 404 });
     }
+
+    // Record immutable audit entry
+    await logAdminAction({
+      adminUserId: userId,
+      adminEmail: (sessionClaims as any)?.email || undefined,
+      action: "commitment_status_updated",
+      targetEntity: "commitment",
+      targetId: id,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get("user-agent") || undefined,
+      details: {
+        newStatus: status,
+        notesUpdated: typeof notes === "string",
+      },
+    });
 
     return NextResponse.json({
       success: true,

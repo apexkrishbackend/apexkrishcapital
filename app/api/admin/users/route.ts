@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { dbConnect } from '@/lib/dbConnect'
 import User from '@/models/user.model'
+import { logAdminAction } from '@/lib/audit-logger'
+import { getClientIp } from '@/lib/rate-limit'
 
 export async function GET() {
   const { userId, sessionClaims } = await auth()
@@ -103,6 +105,22 @@ export async function PATCH(req: NextRequest) {
     if (!updatedUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
+    // Record immutable audit log
+    await logAdminAction({
+      adminUserId: authUserId,
+      adminEmail: (sessionClaims as any)?.email || undefined,
+      action: "user_verification_status_updated",
+      targetEntity: "user",
+      targetId: userId,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get("user-agent") || undefined,
+      details: {
+        targetUserEmail: updatedUser.email,
+        targetUserName: updatedUser.name,
+        newVerificationStatus: verificationStatus,
+      },
+    })
 
     return NextResponse.json({
       success: true,

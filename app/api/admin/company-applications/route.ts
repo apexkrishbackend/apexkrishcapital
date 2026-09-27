@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { dbConnect } from '@/lib/dbConnect'
 import CompanyApplication from '@/models/company-application.model'
+import { logAdminAction } from '@/lib/audit-logger'
+import { getClientIp } from '@/lib/rate-limit'
 
 export async function GET() {
   const { userId, sessionClaims } = await auth()
@@ -88,6 +90,21 @@ export async function PATCH(req: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: 'Application not found.' }, { status: 404 })
     }
+
+    // Record immutable audit log
+    await logAdminAction({
+      adminUserId: userId,
+      adminEmail: (sessionClaims as any)?.email || undefined,
+      action: "founder_application_status_updated",
+      targetEntity: "founder_application",
+      targetId: applicationId,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get("user-agent") || undefined,
+      details: {
+        companyName: updated.companyName,
+        newStatus: status,
+      },
+    })
 
     return NextResponse.json({
       success: true,

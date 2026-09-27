@@ -10,6 +10,9 @@ import {
   generateWhatsAppLink,
   cleanPhoneNumber,
 } from "@/lib/broadcast";
+import { broadcastSchema } from "@/lib/validations/schemas";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { logAdminAction } from "@/lib/audit-logger";
 
 export async function GET(req: NextRequest) {
   const { userId, sessionClaims } = await auth();
@@ -166,41 +169,47 @@ export async function POST(req: NextRequest) {
   }
 
   if (sessionClaims?.metadata?.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: Admin access required." }, { status: 403 });
+  }
+
+  // Rate limit: 10 broadcasts per 5 minutes per admin
+  const limiter = rateLimit(`admin_broadcast_${userId}`, {
+    limit: 10,
+    windowMs: 5 * 60 * 1000,
+  });
+
+  if (!limiter.success) {
+    return NextResponse.json(
+      { error: `Broadcast rate limit exceeded. Please wait ${limiter.reset}s before dispatching again.` },
+      { status: 429 }
+    );
   }
 
   try {
-    const body = await req.json();
+    const rawBody = await req.json();
+    const validation = broadcastSchema.safeParse(rawBody);
+
+    if (!validation.success) {
+      const errorMsg = validation.error.issues[0]?.message || "Invalid broadcast payload.";
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
+    }
+
     const {
       offeringId,
       offeringTitle,
-      targetAudience = "interests_only",
-      verifiedOnly = false,
+      targetAudience,
+      verifiedOnly,
       thirdPartyUrl,
       subject,
-      customMessage = "",
-      sendEmail = false,
-      sendWhatsApp = false,
-      channel, // 'email' | 'whatsapp' | 'both'
-    } = body;
+      customMessage,
+      channel,
+      sendEmail,
+      sendWhatsApp,
+    } = validation.data;
 
     const shouldSendEmail = channel === "email" || channel === "both" || sendEmail === true;
     const shouldSendWhatsApp = channel === "whatsapp" || channel === "both" || sendWhatsApp === true;
-
-    if (!offeringId || !thirdPartyUrl) {
-      return NextResponse.json(
-        { error: "Offering ID and Third-Party Platform URL are required." },
-        { status: 400 }
-      );
-    }
-
     const trimmedUrl = thirdPartyUrl.trim();
-    if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
-      return NextResponse.json(
-        { error: "URL must begin with https:// or http://" },
-        { status: 400 }
-      );
-    }
 
     await dbConnect();
 
@@ -399,6 +408,24 @@ export async function POST(req: NextRequest) {
       emailsSent,
       whatsappProcessed: shouldSendWhatsApp ? whatsappProcessed : 0,
       recipients: broadcastResults,
+    });
+
+    // Record immutable admin audit log
+    await logAdminAction({
+      adminUserId: userId,
+      adminEmail: (sessionClaims as any)?.email || undefined,
+      action: "broadcast_dispatched",
+      targetEntity: "offering",
+      targetId: offeringId,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get("user-agent") || undefined,
+      details: {
+        offeringTitle: offeringTitle || offeringId,
+        targetAudience,
+        totalRecipients: uniqueRecipients.length,
+        emailsSent,
+        whatsappProcessed: shouldSendWhatsApp ? whatsappProcessed : 0,
+      },
     });
 
     let message = "";
