@@ -1,9 +1,61 @@
 import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
+import { dbConnect } from "@/lib/dbConnect";
+import User from "@/models/user.model";
 
 export const PROFILE_NOTIFICATION_TO =
   process.env.PROFILE_NOTIFICATION_TO || "parthasureshm@gmail.com";
+
+/**
+ * Retrieves all admin email addresses to receive administrative alerts.
+ * Aggregates configured admin emails from environment variables and all registered
+ * admins in MongoDB (`role: 'admin'`).
+ */
+export async function getAdminNotificationEmails(): Promise<string[]> {
+  const emailSet = new Set<string>();
+
+  // 1. Process environment variables (PROFILE_NOTIFICATION_TO, ADMIN_EMAILS, etc.)
+  const envEmails = [
+    process.env.PROFILE_NOTIFICATION_TO,
+    process.env.ADMIN_EMAILS,
+    process.env.ADMIN_EMAIL,
+  ].filter(Boolean) as string[];
+
+  for (const raw of envEmails) {
+    const split = raw
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 0 && e.includes("@"));
+    split.forEach((e) => emailSet.add(e));
+  }
+
+  // 2. Query all admin users from MongoDB
+  try {
+    await dbConnect();
+    const adminDocs = await User.find({ role: "admin" })
+      .select("email")
+      .lean();
+
+    for (const doc of adminDocs) {
+      if (doc.email) {
+        const cleaned = doc.email.trim().toLowerCase();
+        if (cleaned.length > 0 && cleaned.includes("@")) {
+          emailSet.add(cleaned);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to query admin users for email notifications:", err);
+  }
+
+  // 3. Fallback to default if no emails found
+  if (emailSet.size === 0) {
+    emailSet.add("parthasureshm@gmail.com");
+  }
+
+  return Array.from(emailSet);
+}
 
 export async function sendProfileUpdateNotification(user: Record<string, any>) {
   const smtpHost = process.env.SMTP_HOST;
@@ -16,6 +68,11 @@ export async function sendProfileUpdateNotification(user: Record<string, any>) {
       "Profile update notification skipped: SMTP_HOST, SMTP_USER, and SMTP_PASS must be configured."
     );
     return { sent: false, reason: "missing_smtp_configuration" };
+  }
+
+  const recipientEmails = await getAdminNotificationEmails();
+  if (recipientEmails.length === 0) {
+    return { sent: false, reason: "no_recipients_found" };
   }
 
   const transporter = nodemailer.createTransport({
@@ -62,7 +119,7 @@ export async function sendProfileUpdateNotification(user: Record<string, any>) {
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM || smtpUser,
-    to: PROFILE_NOTIFICATION_TO,
+    to: recipientEmails,
     subject,
     text: `Investor profile updated\n\n${detailRows}`,
     html: `
@@ -116,7 +173,7 @@ export async function sendProfileUpdateNotification(user: Record<string, any>) {
             </table>
 
             <p style="margin:20px 0 0; font-size:12px; line-height:1.7; color:#6b7280;">
-              This notification was generated automatically by the Apex Krish Capital investor profile system.
+              This notification was generated automatically by the Apex Krish Capital investor profile system and dispatched to all administrator accounts.
             </p>
           </div>
         </div>
@@ -125,5 +182,5 @@ export async function sendProfileUpdateNotification(user: Record<string, any>) {
     attachments: logoAttachment ? [logoAttachment] : undefined,
   });
 
-  return { sent: true, to: PROFILE_NOTIFICATION_TO };
+  return { sent: true, to: recipientEmails };
 }
