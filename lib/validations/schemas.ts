@@ -3,15 +3,16 @@ import { z } from "zod";
 /**
  * Clean & sanitize text strings (strip potential HTML/script tags)
  */
-export const cleanText = (val: string) => val.replace(/<[^>]*>?/gm, "").trim();
+export const cleanText = (val: string) => (typeof val === "string" ? val.replace(/<[^>]*>?/gm, "").trim() : "");
 
 /**
  * Helper to build a sanitized string schema with length constraints
  */
 export function sanitizeString(options: { min?: number; max?: number; requiredError?: string; minError?: string }) {
-  let schema = z.string({ required_error: options.requiredError }).trim();
-  if (options.min !== undefined && options.min > 0) {
-    schema = schema.min(options.min, options.minError || options.requiredError || `Must be at least ${options.min} characters`);
+  let schema = z.string();
+  const minVal = options.min !== undefined ? options.min : (options.requiredError ? 1 : 0);
+  if (minVal > 0) {
+    schema = schema.min(minVal, options.minError || options.requiredError || `Must be at least ${minVal} characters`);
   }
   if (options.max !== undefined) {
     schema = schema.max(options.max, `Must be under ${options.max} characters`);
@@ -70,7 +71,7 @@ export const companyApplicationSchema = z.object({
 export const commitmentSchema = z.object({
   offeringId: sanitizeString({ min: 1, max: 100, requiredError: "Offering ID is required" }),
   offeringTitle: sanitizeString({ min: 1, max: 200, requiredError: "Offering Title is required" }),
-  type: z.enum(["interest", "commitment"]),
+  type: z.enum(["interest", "commitment"] as const),
   amount: z
     .number()
     .positive("Commitment amount must be greater than zero")
@@ -104,7 +105,7 @@ export const broadcastSchema = z.object({
     "all_deal_lps",
     "all_platform_investors",
     "all_verified",
-  ]),
+  ] as const),
   verifiedOnly: z.boolean().default(false),
   thirdPartyUrl: z
     .string()
@@ -115,8 +116,13 @@ export const broadcastSchema = z.object({
       message: "URL must begin with http:// or https://",
     }),
   subject: sanitizeString({ min: 1, max: 250, requiredError: "Subject is required" }),
-  customMessage: z.string().trim().max(5000).optional().default("").transform(cleanText),
-  channel: z.enum(["email", "whatsapp", "both"]).optional(),
+  customMessage: z
+    .string()
+    .trim()
+    .max(5000)
+    .default("")
+    .transform(cleanText),
+  channel: z.enum(["email", "whatsapp", "both"] as const).optional(),
   sendEmail: z.boolean().optional().default(false),
   sendWhatsApp: z.boolean().optional().default(false),
 });
