@@ -355,7 +355,7 @@ export default function ProfilePage() {
 										required
 										value={profile.firstName}
 										onChange={handleChange}
-										placeholder="e.g. Partha"
+										placeholder="e.g. John"
 										className={cn(
 											"w-full h-11 px-4 rounded-xl border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 transition",
 											fieldErrors.firstName
@@ -405,7 +405,7 @@ export default function ProfilePage() {
 									required
 									value={profile.lastName}
 									onChange={handleChange}
-									placeholder="e.g. Suresh"
+									placeholder="e.g. Doe"
 									className={cn(
 										"w-full h-11 px-4 rounded-xl border bg-background text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 transition",
 										fieldErrors.lastName
