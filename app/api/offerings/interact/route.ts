@@ -10,6 +10,10 @@ const OFFERING_MINIMUMS: Record<string, { title: string; minAmount: number }> = 
     title: "Micro1 Inc. - Direct Shares",
     minAmount: 5000,
   },
+  "cursor-anysphere": {
+    title: "Cursor (Anysphere) - Series A/B SPV",
+    minAmount: 5000,
+  },
 };
 
 export async function POST(req: NextRequest) {

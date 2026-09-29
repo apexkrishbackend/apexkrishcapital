@@ -4,7 +4,7 @@ import React, { useEffect, useState, ChangeEvent } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
-import { Check, ArrowLeft, ShieldCheck, AlertCircle, Loader2 } from "lucide-react"
+import { Check, ArrowLeft, ShieldCheck, AlertCircle, Loader2, Mail, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
 	Select,
@@ -577,6 +577,30 @@ export default function ProfilePage() {
 							)}
 						</div>
 					</section>
+				</div>
+
+				{/* Admin Contact Assistance Box */}
+				<div className="mt-6 rounded-2xl border border-border bg-card/60 p-5 text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-4 font-sans">
+					<div>
+						<p className="font-semibold text-foreground text-sm">Need Verification Assistance?</p>
+						<p className="text-xs text-muted-foreground mt-0.5">Contact the Apex Krish Capital syndicate desk directly.</p>
+					</div>
+					<div className="flex items-center gap-3 shrink-0">
+						<a
+							href="mailto:syndicate@apexkrishcapital.com?subject=Accredited%20Investor%20Verification%20Support"
+							className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground transition font-medium text-xs"
+						>
+							<Mail className="w-3.5 h-3.5 text-muted-foreground" />
+							<span>Email Admin</span>
+						</a>
+						<a
+							href="tel:7208456839"
+							className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground transition font-medium text-xs"
+						>
+							<Phone className="w-3.5 h-3.5 text-muted-foreground" />
+							<span>720-845-6839</span>
+						</a>
+					</div>
 				</div>
 			</div>
 
