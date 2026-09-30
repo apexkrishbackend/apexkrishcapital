@@ -110,11 +110,13 @@ export const broadcastSchema = z.object({
   thirdPartyUrl: z
     .string()
     .trim()
-    .min(1, "Third-party closing portal URL is required")
     .max(1000)
-    .refine((val) => /^https?:\/\//i.test(val), {
+    .optional()
+    .nullable()
+    .refine((val) => !val || /^https?:\/\//i.test(val), {
       message: "URL must begin with http:// or https://",
-    }),
+    })
+    .default(""),
   subject: sanitizeString({ min: 1, max: 250, requiredError: "Subject is required" }),
   customMessage: z
     .string()
@@ -125,4 +127,12 @@ export const broadcastSchema = z.object({
   channel: z.enum(["email", "whatsapp", "both"] as const).optional(),
   sendEmail: z.boolean().optional().default(false),
   sendWhatsApp: z.boolean().optional().default(false),
+  attachment: z
+    .object({
+      filename: z.string().min(1).max(255),
+      content: z.string().min(1), // base64 encoded content
+      contentType: z.string().optional(),
+    })
+    .optional()
+    .nullable(),
 });

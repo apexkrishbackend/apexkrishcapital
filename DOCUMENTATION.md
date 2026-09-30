@@ -284,9 +284,13 @@ flowchart TD
 - **Interactive Card Linking**: Clicking any deal card isolates commitments for that specific offering.
 - **Context-Aware CSV Export**: Exports either active commitments or closed deals archive.
 
-### 6.6 Investor Broadcast & Closing Portal Subsystem
-- **Broadcast Modal**: Allows administrators to dispatch closing portal links via Email and generate direct Click-to-Chat `wa.me` links.
-- Target audiences: *Interests Only*, *Commitments Only*, or *All Verified Investors*.
+### 6.6 Investor Broadcast Subsystem
+- **Homepage Deal Card Integration**: Active investments on the homepage (`OfferingsSection.tsx`) feature a direct **Broadcast** button in the deal card controls bar for administrators.
+- **Strict Verified Delivery**: Automatically broadcasts emails to all platform investors with verified SEC 506(c) accreditation status, displaying a live recipient count badge.
+- **In-Memory Document Attachment Engine**:
+  - Allows administrators to attach investment memorandums, pitch decks, term sheets, or financial models (`.pdf`, `.docx`, `.xlsx`, `.pptx`, images up to 20MB).
+  - Documents are encoded to base64 in-memory via the browser `FileReader` API and attached directly to Nodemailer multi-part SMTP emails without requiring persistent cloud storage or disk writes.
+- **Minimalist Workflow**: Streamlined modal focused solely on subject, message, document attachment, and one-click broadcast dispatch.
 
 ---
 

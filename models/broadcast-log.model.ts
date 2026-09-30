@@ -17,7 +17,7 @@ export interface IBroadcastLog {
   offeringTitle: string;
   adminUserId: string;
   targetAudience: string;
-  thirdPartyUrl: string;
+  thirdPartyUrl?: string;
   subject: string;
   customMessage?: string;
   totalRecipients: number;
@@ -74,7 +74,7 @@ const broadcastLogSchema = new Schema<IBroadcastLogDocument>(
     },
     thirdPartyUrl: {
       type: String,
-      required: true,
+      default: "",
     },
     subject: {
       type: String,

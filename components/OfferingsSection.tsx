@@ -22,6 +22,12 @@ import {
   Building,
   Layers,
   Trash2,
+  Send,
+  FileText,
+  Paperclip,
+  Upload,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -84,6 +90,13 @@ function formatClosedMonthYear(offering: ActiveOffering): string {
     } catch {}
   }
   return "Closed";
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return "0 B";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
 function deduplicateOfferings(items: ActiveOffering[]): ActiveOffering[] {
@@ -239,6 +252,22 @@ export default function OfferingsSection({
   const [closingOfferingId, setClosingOfferingId] = useState<string | null>(null);
   const [deletingOfferingId, setDeletingOfferingId] = useState<string | null>(null);
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null);
+
+  // Admin Broadcast State
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [broadcastOffering, setBroadcastOffering] = useState<ActiveOffering | null>(null);
+  const [broadcastSubject, setBroadcastSubject] = useState("");
+  const [broadcastCustomMessage, setBroadcastCustomMessage] = useState("");
+  const [broadcastAttachment, setBroadcastAttachment] = useState<{
+    filename: string;
+    content: string; // base64
+    contentType?: string;
+    size?: number;
+  } | null>(null);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [broadcastRecipientCount, setBroadcastRecipientCount] = useState<number | null>(null);
+  const [isLoadingAudiencePreview, setIsLoadingAudiencePreview] = useState(false);
 
   // New Offering Form State
   const [newOfferingForm, setNewOfferingForm] = useState({
@@ -569,6 +598,126 @@ export default function OfferingsSection({
     }
   }
 
+  // Admin: Broadcast Deal to Verified Investors
+  async function fetchAudiencePreview(offeringId: string) {
+    setIsLoadingAudiencePreview(true);
+    try {
+      const res = await fetch(
+        `/api/admin/broadcast?offeringId=${encodeURIComponent(offeringId)}&audience=all_verified&verifiedOnly=true`,
+        { cache: "no-store" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setBroadcastRecipientCount(data.totalRecipients ?? 0);
+      }
+    } catch (e) {
+      console.warn("Failed to preview broadcast audience count:", e);
+    } finally {
+      setIsLoadingAudiencePreview(false);
+    }
+  }
+
+  function openBroadcastModal(offering: ActiveOffering) {
+    setBroadcastOffering(offering);
+    setBroadcastSubject(`Priority SPV Update: ${offering.name} (${offering.valuation} Round)`);
+    setBroadcastCustomMessage("");
+    setBroadcastAttachment(null);
+    setBroadcastError(null);
+    setBroadcastModalOpen(true);
+    fetchAudiencePreview(offering.offeringId);
+  }
+
+  function handleBroadcastFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      setBroadcastError("File size exceeds 20MB limit. Please attach a smaller file.");
+      return;
+    }
+
+    setBroadcastError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setBroadcastAttachment({
+        filename: file.name,
+        content: result,
+        contentType: file.type || "application/octet-stream",
+        size: file.size,
+      });
+    };
+    reader.onerror = () => {
+      setBroadcastError("Failed to read attached file.");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function handleRemoveBroadcastAttachment() {
+    setBroadcastAttachment(null);
+  }
+
+  async function handleBroadcastSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!broadcastOffering) return;
+
+    if (!broadcastSubject.trim()) {
+      setBroadcastError("Subject line is required.");
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    setBroadcastError(null);
+
+    try {
+      const payload: any = {
+        offeringId: broadcastOffering.offeringId,
+        offeringTitle: broadcastOffering.name,
+        targetAudience: "all_verified",
+        verifiedOnly: true,
+        subject: broadcastSubject.trim(),
+        customMessage: broadcastCustomMessage.trim(),
+        thirdPartyUrl: "",
+        channel: "email",
+        sendEmail: true,
+      };
+
+      if (broadcastAttachment) {
+        payload.attachment = {
+          filename: broadcastAttachment.filename,
+          content: broadcastAttachment.content,
+          contentType: broadcastAttachment.contentType,
+        };
+      }
+
+      const res = await fetch("/api/admin/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to dispatch email broadcast.");
+      }
+
+      const sentCount = data.emailsSent || data.totalRecipients || 0;
+      setBroadcastModalOpen(false);
+      setSuccessMessage(
+        `Email broadcast successfully dispatched to ${sentCount} verified investor${
+          sentCount === 1 ? "" : "s"
+        }${broadcastAttachment ? ` with attachment '${broadcastAttachment.filename}'` : ""}.`
+      );
+      setTimeout(() => setSuccessMessage(null), 8000);
+    } catch (err: any) {
+      setBroadcastError(err.message || "Failed to dispatch broadcast.");
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  }
+
   const activeInteraction = interactions[currentOffering.offeringId];
   const isExpressing = expressingInterestId === currentOffering.offeringId;
   const isClosingThis = closingOfferingId === currentOffering.offeringId;
@@ -714,7 +863,17 @@ export default function OfferingsSection({
                     <ShieldAlert className="size-4 shrink-0 text-amber-500" />
                     <span>Admin Controls · Managing {currentOffering.name}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openBroadcastModal(currentOffering)}
+                      className="h-8 px-3 rounded-lg text-xs font-bold text-primary hover:text-primary hover:bg-primary/10 border-primary/30 cursor-pointer inline-flex items-center gap-1.5 shrink-0 shadow-2xs"
+                      title="Broadcast email update & documents to verified investors"
+                    >
+                      <Send className="size-3.5" />
+                      <span>Broadcast</span>
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1385,6 +1544,179 @@ export default function OfferingsSection({
                     </>
                   ) : (
                     "Publish Offering"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN: BROADCAST DEAL MODAL */}
+      {broadcastModalOpen && broadcastOffering && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl border border-border bg-card text-card-foreground p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 pb-3.5 border-b border-border">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <ShieldAlert className="size-3" />
+                  <span>Admin Syndicate Desk · Deal Broadcast</span>
+                </div>
+                <h3 className="text-xl font-bold text-foreground">
+                  Broadcast Update: {broadcastOffering.name}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Send high-priority email notices &amp; attached documents to platform investors.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setBroadcastModalOpen(false)}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted cursor-pointer transition"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {broadcastError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{broadcastError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleBroadcastSubmit} className="space-y-4">
+              {/* Delivery Target Card (All Verified Users) */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl border border-border bg-muted/30">
+                <div className="space-y-0.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Delivery Audience
+                  </span>
+                  <p className="text-sm font-semibold text-foreground">
+                    All Verified Platform Investors
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                    {isLoadingAudiencePreview ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    )}
+                    <span>
+                      {broadcastRecipientCount !== null
+                        ? `${broadcastRecipientCount} Verified User${broadcastRecipientCount === 1 ? "" : "s"}`
+                        : "Querying Audience..."}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Subject Line */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  Email Subject Line *
+                </label>
+                <input
+                  required
+                  type="text"
+                  value={broadcastSubject}
+                  onChange={(e) => setBroadcastSubject(e.target.value)}
+                  placeholder="e.g. Priority Allocation &amp; Wire Notice: Micro1 Inc. SPV Series"
+                  className="w-full h-10 px-3.5 rounded-xl border border-input bg-background text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Custom Message */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  Custom Message / Syndicate Note
+                </label>
+                <textarea
+                  rows={3}
+                  value={broadcastCustomMessage}
+                  onChange={(e) => setBroadcastCustomMessage(e.target.value)}
+                  placeholder="e.g. Attached is the updated SPV investment memorandum and subscription docs. Wire instructions are also included. Allocation closes this Friday at 5 PM EST."
+                  className="w-full p-3 rounded-xl border border-input bg-background text-xs sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed resize-none"
+                />
+              </div>
+
+              {/* Document Attachment Field */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center justify-between">
+                  <span>Attach Document (Optional)</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">In-memory attachment (PDF, DOCX, XLSX, PPTX, max 20MB)</span>
+                </label>
+
+                {broadcastAttachment ? (
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <FileText className="size-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{broadcastAttachment.filename}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatFileSize(broadcastAttachment.size)} • <span className="text-emerald-600 dark:text-emerald-400 font-medium">Ready to send</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveBroadcastAttachment}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition cursor-pointer"
+                      title="Remove attachment"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-4 border border-dashed border-border hover:border-primary/50 bg-muted/20 hover:bg-muted/40 rounded-2xl cursor-pointer transition text-center group">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xlsx,.xls,.ppt,.pptx,image/*"
+                      onChange={handleBroadcastFileUpload}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground group-hover:text-foreground">
+                      <Upload className="size-4 text-primary" />
+                      <span>Click to attach a document or pitch deck</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground mt-1">
+                      Files are delivered directly as email attachments without persistent storage
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setBroadcastModalOpen(false)}
+                  className="rounded-xl text-xs uppercase tracking-wider"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSendingBroadcast}
+                  className="rounded-xl text-xs font-semibold uppercase tracking-wider shadow-xs gap-1.5"
+                >
+                  {isSendingBroadcast ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Dispatching Broadcast...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="size-3.5" />
+                      <span>Send Email Broadcast</span>
+                    </>
                   )}
                 </Button>
               </div>

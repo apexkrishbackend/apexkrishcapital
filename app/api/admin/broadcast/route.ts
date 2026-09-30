@@ -46,14 +46,15 @@ export async function GET(req: NextRequest) {
 
     const userMap = new Map<string, any>();
 
-    if (audience === "all_platform_investors") {
+    if (audience === "all_platform_investors" || audience === "all_verified") {
+      const isTargetVerified = audience === "all_verified" || verifiedOnly;
       // Query all users from User collection
       const allUsers = await User.find({ role: "user" })
         .select("name email phoneNumber verificationStatus investorStatus citizenship")
         .lean();
 
       allUsers.forEach((u: any) => {
-        if (verifiedOnly && u.verificationStatus !== "verified") return;
+        if (isTargetVerified && u.verificationStatus !== "verified") return;
         const uId = u._id ? u._id.toString() : u.id;
         if (!uId) return;
 
@@ -205,35 +206,39 @@ export async function POST(req: NextRequest) {
       channel,
       sendEmail,
       sendWhatsApp,
+      attachment,
     } = validation.data;
 
     const shouldSendEmail = channel === "email" || channel === "both" || sendEmail === true;
     const shouldSendWhatsApp = channel === "whatsapp" || channel === "both" || sendWhatsApp === true;
-    const trimmedUrl = thirdPartyUrl.trim();
+    const trimmedUrl = (thirdPartyUrl || "").trim();
 
     await dbConnect();
 
-    // Persist or update the link in DealLink collection
-    await DealLink.findOneAndUpdate(
-      { offeringId },
-      {
-        $set: {
-          thirdPartyUrl: trimmedUrl,
-          updatedBy: userId,
+    // Persist or update the link in DealLink collection if provided
+    if (trimmedUrl) {
+      await DealLink.findOneAndUpdate(
+        { offeringId },
+        {
+          $set: {
+            thirdPartyUrl: trimmedUrl,
+            updatedBy: userId,
+          },
         },
-      },
-      { upsert: true }
-    );
+        { upsert: true }
+      );
+    }
 
     const userMap = new Map<string, any>();
 
-    if (targetAudience === "all_platform_investors") {
+    if (targetAudience === "all_platform_investors" || targetAudience === "all_verified") {
+      const isTargetVerified = targetAudience === "all_verified" || verifiedOnly;
       const allUsers = await User.find({ role: "user" })
         .select("name email phoneNumber verificationStatus investorStatus citizenship")
         .lean();
 
       allUsers.forEach((u: any) => {
-        if (verifiedOnly && u.verificationStatus !== "verified") return;
+        if (isTargetVerified && u.verificationStatus !== "verified") return;
         const uId = u._id ? u._id.toString() : u.id;
         if (!uId) return;
 
@@ -306,7 +311,7 @@ export async function POST(req: NextRequest) {
 
     const emailSubject =
       subject ||
-      `Priority Access: ${offeringTitle || offeringId} SPV Subscription & Closing Portal`;
+      `Priority Access: ${offeringTitle || offeringId} SPV Subscription & Investor Update`;
 
     const broadcastResults: IBroadcastRecipient[] = [];
     const whatsappRoster: Array<{
@@ -324,8 +329,8 @@ export async function POST(req: NextRequest) {
     let emailsSent = 0;
     let whatsappProcessed = 0;
 
-    // Process each target investor
-    for (const recipient of uniqueRecipients) {
+    // Dispatch emails concurrently in parallel for high speed
+    const dispatchPromises = uniqueRecipients.map(async (recipient) => {
       let emailStatus: "sent" | "failed" | "skipped" = "skipped";
       let whatsappStatus: "sent" | "link_generated" | "failed" | "skipped" = "skipped";
       let errorMsg: string | undefined;
@@ -342,18 +347,18 @@ export async function POST(req: NextRequest) {
           thirdPartyUrl: trimmedUrl,
           customMessage,
           subject: emailSubject,
+          attachment: attachment || null,
         });
 
         if (emailRes.success) {
           emailStatus = "sent";
-          emailsSent += 1;
         } else {
           emailStatus = "failed";
           errorMsg = emailRes.error;
         }
       }
 
-      // 2. Generate WhatsApp Link (always generated for phone holders so admin can use immediately on screen)
+      // 2. Generate WhatsApp Link (if phone is present)
       if (recipient.userPhone) {
         whatsAppLink = generateWhatsAppLink(recipient.userPhone, {
           userName: recipient.userName,
@@ -364,34 +369,50 @@ export async function POST(req: NextRequest) {
 
         if (whatsAppLink) {
           whatsappStatus = "link_generated";
-          if (shouldSendWhatsApp) {
-            whatsappProcessed += 1;
-          }
         }
       }
 
-      broadcastResults.push({
-        userId: recipient.userId,
-        userName: recipient.userName,
-        userEmail: recipient.userEmail,
-        userPhone: recipient.userPhone,
-        type: recipient.type,
-        amount: recipient.amount,
+      return {
+        recipient,
         emailStatus,
         whatsappStatus,
+        whatsAppLink,
         error: errorMsg,
+      };
+    });
+
+    const dispatchResults = await Promise.all(dispatchPromises);
+
+    for (const item of dispatchResults) {
+      if (item.emailStatus === "sent") {
+        emailsSent += 1;
+      }
+      if (item.whatsappStatus === "link_generated" && shouldSendWhatsApp) {
+        whatsappProcessed += 1;
+      }
+
+      broadcastResults.push({
+        userId: item.recipient.userId,
+        userName: item.recipient.userName,
+        userEmail: item.recipient.userEmail,
+        userPhone: item.recipient.userPhone,
+        type: item.recipient.type,
+        amount: item.recipient.amount,
+        emailStatus: item.emailStatus,
+        whatsappStatus: item.whatsappStatus,
+        error: item.error,
       });
 
       whatsappRoster.push({
-        userId: recipient.userId,
-        userName: recipient.userName,
-        userEmail: recipient.userEmail,
-        userPhone: recipient.userPhone,
-        whatsAppLink,
-        emailStatus,
-        verificationStatus: recipient.verificationStatus,
-        type: recipient.type,
-        amount: recipient.amount,
+        userId: item.recipient.userId,
+        userName: item.recipient.userName,
+        userEmail: item.recipient.userEmail,
+        userPhone: item.recipient.userPhone,
+        whatsAppLink: item.whatsAppLink,
+        emailStatus: item.emailStatus,
+        verificationStatus: item.recipient.verificationStatus,
+        type: item.recipient.type,
+        amount: item.recipient.amount,
       });
     }
 

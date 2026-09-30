@@ -10,7 +10,12 @@ import {
   Scale, 
   FileText, 
   ArrowUpRight,
-  Info
+  Info,
+  Coins,
+  Landmark,
+  Building2,
+  Briefcase,
+  Repeat,
 } from "lucide-react";
 
 export const metadata = {
@@ -26,6 +31,7 @@ const tocItems = [
   { id: "valuation-myth", title: "Myth: Share Price Tells You the Valuation" },
   { id: "spv", title: "What is an SPV?" },
   { id: "syndicate", title: "What is an Investment Syndicate?" },
+  { id: "liquidity-events", title: "What is a Liquidation Event?" },
   { id: "risks", title: "Key Risks of Private Investing" },
   { id: "diligence", title: "Our Due Diligence Approach" },
 ];
@@ -249,7 +255,69 @@ export default function InvestorEducationPage() {
             </p>
           </section>
 
-          {/* 8. Key Risks of Private Investing */}
+          {/* 8. What is a Liquidation Event? */}
+          <section id="liquidity-events" className="scroll-mt-28 space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-border">
+              <Coins className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                What is a Liquidation Event?
+              </h2>
+            </div>
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
+              A liquidation event (also called an exit or liquidity event) is the point at which private shareholders are able to convert their ownership stake into cash — or into freely tradable public shares. Until a liquidity event occurs, an investment is generally held on paper only, since there is no public market to sell into. Common types include:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <Landmark className="w-3.5 h-3.5" />
+                  <span>Initial Public Offering (IPO)</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  The company lists its shares on a public stock exchange. Existing private shareholders typically become holders of publicly tradable stock, though sales are often restricted for a period after listing (a &ldquo;lock-up&rdquo;).
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Business acquisition (M&amp;A)</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  Another company buys the business outright, in cash, stock, or a combination. Shareholders are paid out (or receive shares in the acquirer) based on their ownership stake and the negotiated deal terms.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-indigo-500 flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Private equity sale / recapitalization</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  A private equity firm or other financial buyer purchases some or all of the company&apos;s equity, often replacing early investors while the business continues operating privately under new ownership.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-cyan-500 flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5" />
+                  <span>Secondary sale</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  An investor sells their existing shares directly to another private buyer before any company-wide exit event, subject to the company&apos;s transfer restrictions and any right of first refusal.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs sm:text-sm text-muted-foreground leading-relaxed mt-2">
+              <Info className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <span>
+                Timing and structure of a liquidity event vary by company and are never guaranteed — this is a core part of the illiquidity risk described below.
+              </span>
+            </div>
+          </section>
+
+          {/* 9. Key Risks of Private Investing */}
           <section id="risks" className="scroll-mt-28 space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -291,7 +359,7 @@ export default function InvestorEducationPage() {
             </div>
           </section>
 
-          {/* 9. Our Due Diligence Approach */}
+          {/* 10. Our Due Diligence Approach */}
           <section id="diligence" className="scroll-mt-28 space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
