@@ -19,6 +19,8 @@ export interface IOffering {
   status: "active" | "closed";
   pastStatusText?: string;
   pastBadge?: string;
+  closedAt?: Date;
+  closedMonthYear?: string;
   displayOrder?: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -67,7 +69,7 @@ const offeringSchema = new Schema<IOfferingDocument>(
     },
     fundingGoal: {
       type: String,
-      default: "$125K",
+      default: "$123K",
       trim: true,
     },
     goalSub: {
@@ -118,6 +120,13 @@ const offeringSchema = new Schema<IOfferingDocument>(
     pastBadge: {
       type: String,
       default: "Direct SPV",
+      trim: true,
+    },
+    closedAt: {
+      type: Date,
+    },
+    closedMonthYear: {
+      type: String,
       trim: true,
     },
     displayOrder: {

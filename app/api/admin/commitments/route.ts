@@ -4,7 +4,6 @@ import { dbConnect } from "@/lib/dbConnect";
 import Commitment from "@/models/commitment.model";
 import User from "@/models/user.model";
 import Offering from "@/models/offering.model";
-import { OFFERINGS_CATALOG } from "@/lib/constants/offerings";
 import { getLiveOfferings } from "@/lib/offerings-service";
 import { logAdminAction } from "@/lib/audit-logger";
 import { getClientIp } from "@/lib/rate-limit";
@@ -29,38 +28,22 @@ export async function GET(req: NextRequest) {
     const statusFilter = searchParams.get("status");
     const search = searchParams.get("search")?.trim().toLowerCase();
 
+    // Fetch live offerings from MongoDB (seeded if empty)
+    const { allOfferings } = await getLiveOfferings();
+    const liveOfferingIds = new Set(allOfferings.map((o: any) => o.offeringId));
+
+    // Clean up any historical orphaned commitments for offerings that were deleted
+    await Commitment.deleteMany({
+      offeringId: { $nin: Array.from(liveOfferingIds) },
+    });
+
     // Query all records for accurate global metrics & breakdown calculation
     const allRecords = await Commitment.find({})
       .populate("userId", "name email phoneNumber investorStatus citizenship verificationStatus")
       .sort({ createdAt: -1 })
       .lean();
 
-    const allFormatted = allRecords.map((record: any) => {
-      const user = record.userId || {};
-      return {
-        id: record._id.toString(),
-        userId: user._id ? user._id.toString() : record.userId?.toString(),
-        userName: record.userName || user.name || "Anonymous Investor",
-        userEmail: record.userEmail || user.email,
-        userPhone: user.phoneNumber || null,
-        investorStatus: user.investorStatus || "Accredited",
-        citizenship: user.citizenship || "US",
-        userVerificationStatus: user.verificationStatus || "pending verification",
-        offeringId: record.offeringId,
-        offeringTitle: record.offeringTitle,
-        type: record.type, // 'interest' | 'commitment'
-        amount: record.amount || null,
-        status: record.status || "active",
-        notes: record.notes || "",
-        createdAt: record.createdAt?.toISOString() || null,
-        updatedAt: record.updatedAt?.toISOString() || null,
-      };
-    });
-
-    // Fetch live offerings from MongoDB (seeded if empty)
-    const { allOfferings } = await getLiveOfferings();
-
-    // Compute Per-Offering Breakdowns using MongoDB offerings + catalog fallback
+    // Compute Per-Offering Breakdowns using live MongoDB offerings
     const catalogMap = new Map<string, any>();
     allOfferings.forEach((offering: any) => {
       catalogMap.set(offering.offeringId, {
@@ -69,11 +52,14 @@ export async function GET(req: NextRequest) {
         companyName: offering.name,
         roundName: offering.roundType || offering.badge,
         description: offering.description,
-        targetAllocation: parseFloat((offering.fundingGoal || "125000").replace(/[^0-9.]/g, "")) * (offering.fundingGoal?.includes("K") ? 1000 : offering.fundingGoal?.includes("M") ? 1000000 : 1) || 125000,
+        targetAllocation: parseFloat((offering.fundingGoal || "123000").replace(/[^0-9.]/g, "")) * (offering.fundingGoal?.includes("K") ? 1000 : offering.fundingGoal?.includes("M") ? 1000000 : 1) || 123000,
         minCheckSize: offering.minCheckNum || 5000,
         valuation: offering.valuation,
-        status: offering.status === "active" ? "active" : "funded",
+        status: offering.status || "active",
         category: offering.roundType || "Direct SPV",
+        closingDate: offering.closingDate,
+        closedAt: offering.closedAt,
+        closedMonthYear: offering.closedMonthYear || (offering.closedAt ? new Date(offering.closedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : offering.closingDate && offering.closingDate !== "Closed" ? offering.closingDate : undefined),
         committedCapital: 0,
         commitmentsCount: 0,
         interestsCount: 0,
@@ -86,70 +72,46 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    OFFERINGS_CATALOG.forEach((offering) => {
-      if (!catalogMap.has(offering.id)) {
-        catalogMap.set(offering.id, {
-          offeringId: offering.id,
-          title: offering.title,
-          companyName: offering.companyName,
-          roundName: offering.roundName,
-          description: offering.description,
-          targetAllocation: offering.targetAllocation,
-          minCheckSize: offering.minCheckSize,
-          valuation: offering.valuation,
-          status: offering.status,
-          category: offering.category,
-          committedCapital: 0,
-          commitmentsCount: 0,
-          interestsCount: 0,
-          wiresReceivedCapital: 0,
-          allocatedCapital: 0,
-          percentFilled: 0,
-          averageCheckSize: 0,
-          isOversubscribed: false,
-          oversubscribedAmount: 0,
-        });
-      }
+    const allFormatted = allRecords.map((record: any) => {
+      const user = record.userId || {};
+      const offering = catalogMap.get(record.offeringId);
+      return {
+        id: record._id.toString(),
+        userId: user._id ? user._id.toString() : record.userId?.toString(),
+        userName: record.userName || user.name || "Anonymous Investor",
+        userEmail: record.userEmail || user.email,
+        userPhone: user.phoneNumber || null,
+        investorStatus: user.investorStatus || "Accredited",
+        citizenship: user.citizenship || "US",
+        userVerificationStatus: user.verificationStatus || "pending verification",
+        offeringId: record.offeringId,
+        offeringTitle: record.offeringTitle,
+        offeringStatus: offering?.status || "active",
+        type: record.type, // 'interest' | 'commitment'
+        amount: record.amount || null,
+        status: record.status || "active",
+        notes: record.notes || "",
+        createdAt: record.createdAt?.toISOString() || null,
+        updatedAt: record.updatedAt?.toISOString() || null,
+      };
     });
 
     allFormatted.forEach((item) => {
-      if (!catalogMap.has(item.offeringId)) {
-        catalogMap.set(item.offeringId, {
-          offeringId: item.offeringId,
-          title: item.offeringTitle,
-          companyName: item.offeringTitle,
-          roundName: "Direct Syndicate",
-          description: "",
-          targetAllocation: 100000,
-          minCheckSize: 5000,
-          valuation: "—",
-          status: "active",
-          category: "Direct SPV",
-          committedCapital: 0,
-          commitmentsCount: 0,
-          interestsCount: 0,
-          wiresReceivedCapital: 0,
-          allocatedCapital: 0,
-          percentFilled: 0,
-          averageCheckSize: 0,
-          isOversubscribed: false,
-          oversubscribedAmount: 0,
-        });
-      }
-
       const offering = catalogMap.get(item.offeringId);
-      if (item.type === "commitment" && item.status !== "cancelled") {
-        const amount = item.amount || 0;
-        offering.committedCapital += amount;
-        offering.commitmentsCount += 1;
+      if (offering) {
+        if (item.type === "commitment" && item.status !== "cancelled") {
+          const amount = item.amount || 0;
+          offering.committedCapital += amount;
+          offering.commitmentsCount += 1;
 
-        if (item.status === "wire_received") {
-          offering.wiresReceivedCapital += amount;
-        } else if (item.status === "allocated") {
-          offering.allocatedCapital += amount;
+          if (item.status === "wire_received") {
+            offering.wiresReceivedCapital += amount;
+          } else if (item.status === "allocated") {
+            offering.allocatedCapital += amount;
+          }
+        } else if (item.type === "interest" && item.status !== "cancelled") {
+          offering.interestsCount += 1;
         }
-      } else if (item.type === "interest" && item.status !== "cancelled") {
-        offering.interestsCount += 1;
       }
     });
 

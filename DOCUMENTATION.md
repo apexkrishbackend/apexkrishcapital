@@ -194,7 +194,7 @@ flowchart TD
 
 - **Active Offering**: **Micro1 Inc. SPV Series**
   - Valuation: **$3.7B Pre-money**
-  - Syndicate Allocation Cap: **$125,000 USD**
+  - Syndicate Allocation Cap: **$123,000 USD**
   - Minimum Check Size: **$5,000 USD**
   - Round Status: Direct SPV Secondary Equity
 - **Interactive Action States**:

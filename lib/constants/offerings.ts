@@ -4,7 +4,7 @@ export interface OfferingConfig {
   companyName: string;
   roundName: string;
   description: string;
-  targetAllocation: number; // Target dollar cap in USD (e.g. 125000)
+  targetAllocation: number; // Target dollar cap in USD (e.g. 123000)
   minCheckSize: number;     // Minimum check size in USD (e.g. 5000)
   valuation: string;        // e.g. "$500M" or "$14.0B"
   status: "active" | "closing_soon" | "funded" | "upcoming";
@@ -19,7 +19,7 @@ export const OFFERINGS_CATALOG: OfferingConfig[] = [
     companyName: "Micro1 Inc.",
     roundName: "Direct SPV Series",
     description: "AI-powered developer vetting platform & pre-IPO talent infrastructure engine.",
-    targetAllocation: 125000,
+    targetAllocation: 123000,
     minCheckSize: 5000,
     valuation: "<$4B",
     status: "active",
@@ -37,6 +37,7 @@ export const OFFERINGS_CATALOG: OfferingConfig[] = [
     valuation: "$14.0B",
     status: "funded",
     category: "AI Infrastructure",
+    closingDate: "2026-07-31",
   },
   {
     id: "xai",

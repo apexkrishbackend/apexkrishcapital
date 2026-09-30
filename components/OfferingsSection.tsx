@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import {
   Calendar,
+  CalendarDays,
   DollarSign,
   CheckCircle2,
   Lock,
@@ -45,12 +46,45 @@ export type ActiveOffering = {
   status: "active" | "closed";
   pastStatusText?: string;
   pastBadge?: string;
+  closedAt?: Date | string;
+  closedMonthYear?: string;
+  updatedAt?: Date | string;
 };
 
 type UserInteraction = {
   type: "interest" | "commitment";
   amount?: number | null;
 };
+
+function formatClosedMonthYear(offering: ActiveOffering): string {
+  if (offering.closedMonthYear && offering.closedMonthYear !== "Closed" && offering.closedMonthYear !== "Open") {
+    return offering.closedMonthYear;
+  }
+  if (offering.closedAt) {
+    try {
+      const d = new Date(offering.closedAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      }
+    } catch {}
+  }
+  if (offering.closingDate && offering.closingDate !== "Closed" && offering.closingDate !== "Open") {
+    const cleaned = offering.closingDate.replace(/\d+,\s*/, "").replace(/^\d{1,2}\s+/, "").trim();
+    if (cleaned && cleaned !== "Closed" && cleaned !== "Open") return cleaned;
+  }
+  if (offering.offeringId === "scale-ai") return "Jul 2026";
+  if (offering.offeringId === "xai") return "Dec 2024";
+  if (offering.offeringId === "neuralink") return "Nov 2024";
+  if (offering.updatedAt) {
+    try {
+      const d = new Date(offering.updatedAt);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      }
+    } catch {}
+  }
+  return "Closed";
+}
 
 function deduplicateOfferings(items: ActiveOffering[]): ActiveOffering[] {
   const seenIds = new Set<string>();
@@ -81,7 +115,7 @@ const FALLBACK_ACTIVE_OFFERINGS: ActiveOffering[] = [
     closingDate: "Oct 8, 2026",
     valuation: "<$4B",
     valuationSub: "Pre-money round",
-    fundingGoal: "$125K",
+    fundingGoal: "$123K",
     goalSub: "Allocation cap",
     minCheck: "$5K",
     minCheckSub: "USD accredited entry",
@@ -118,7 +152,8 @@ const FALLBACK_PAST_OFFERINGS: ActiveOffering[] = [
     badge: "Series F SPV",
     roundType: "Series F SPV",
     description: "Foundational AI data infrastructure and model validation platform.",
-    closingDate: "Closed",
+    closingDate: "Jul 2026",
+    closedMonthYear: "Jul 2026",
     valuation: "$14.0B",
     valuationSub: "Series F round",
     fundingGoal: "$250K",
@@ -135,7 +170,8 @@ const FALLBACK_PAST_OFFERINGS: ActiveOffering[] = [
     badge: "Series B SPV",
     roundType: "Series B SPV",
     description: "Frontier artificial intelligence research, Grok models, and supercomputing clusters.",
-    closingDate: "Closed",
+    closingDate: "Dec 2024",
+    closedMonthYear: "Dec 2024",
     valuation: "$24.0B",
     valuationSub: "Series B round",
     fundingGoal: "$500K",
@@ -152,7 +188,8 @@ const FALLBACK_PAST_OFFERINGS: ActiveOffering[] = [
     badge: "Direct SPV",
     roundType: "Direct SPV",
     description: "Brain-computer interface (BCI) technology restoring autonomy and neural function.",
-    closingDate: "Closed",
+    closingDate: "Nov 2024",
+    closedMonthYear: "Nov 2024",
     valuation: "$7.0B",
     valuationSub: "Direct SPV round",
     fundingGoal: "$200K",
@@ -444,12 +481,25 @@ export default function OfferingsSection({
 
   // Admin: Close Active Offering and move to past offerings
   async function handleCloseOffering(offering: ActiveOffering) {
+    const nowStr = new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
     const confirmClose = window.confirm(
-      `Are you sure you want to close '${offering.name}'? It will be immediately archived and moved to Past Offerings.`
+      `Are you sure you want to close '${offering.name}'? It will be immediately archived and moved to Past Offerings as closed in ${nowStr}.`
     );
     if (!confirmClose) return;
 
     setClosingOfferingId(offering.offeringId);
+
+    // Optimistic UI updates
+    const closedDeal: ActiveOffering = {
+      ...offering,
+      status: "closed",
+      closedMonthYear: nowStr,
+      closingDate: nowStr,
+      pastStatusText: "Funded & Closed",
+    };
+    setActiveOfferings((prev) => prev.filter((o) => o.offeringId !== offering.offeringId));
+    setPastOfferings((prev) => [closedDeal, ...prev.filter((o) => o.offeringId !== offering.offeringId)]);
+    setSelectedOfferingIndex(0);
 
     try {
       const res = await fetch("/api/admin/offerings", {
@@ -471,24 +521,29 @@ export default function OfferingsSection({
       setSuccessMessage(`'${offering.name}' has been closed and moved to Past Offerings.`);
       setTimeout(() => setSuccessMessage(null), 6000);
 
-      // Reload live offerings
+      // Reload live offerings in background
       await loadOfferings();
-      setSelectedOfferingIndex(0);
     } catch (err: any) {
       alert(err.message || "Failed to close offering.");
+      await loadOfferings();
     } finally {
       setClosingOfferingId(null);
     }
   }
 
-  // Admin: Delete Past Offering
-  async function handleDeletePastOffering(offering: ActiveOffering) {
+  // Admin: Delete Offering (Active or Past)
+  async function handleDeleteOffering(offering: ActiveOffering) {
     const confirmDelete = window.confirm(
-      `Are you sure you want to permanently delete '${offering.name}' from past offerings? This cannot be undone.`
+      `Are you sure you want to permanently delete '${offering.name}' from offerings? This cannot be undone.`
     );
     if (!confirmDelete) return;
 
     setDeletingOfferingId(offering.offeringId);
+
+    // Optimistic UI removal
+    setActiveOfferings((prev) => prev.filter((o) => o.offeringId !== offering.offeringId));
+    setPastOfferings((prev) => prev.filter((o) => o.offeringId !== offering.offeringId));
+    setSelectedOfferingIndex(0);
 
     try {
       const res = await fetch(`/api/admin/offerings?offeringId=${encodeURIComponent(offering.offeringId)}`, {
@@ -501,7 +556,6 @@ export default function OfferingsSection({
         throw new Error(data.error || "Failed to delete offering.");
       }
 
-      setPastOfferings((prev) => prev.filter((o) => o.offeringId !== offering.offeringId));
       setSuccessMessage(`'${offering.name}' has been permanently deleted.`);
       setTimeout(() => setSuccessMessage(null), 6000);
 
@@ -509,6 +563,7 @@ export default function OfferingsSection({
       await loadOfferings();
     } catch (err: any) {
       alert(err.message || "Failed to delete offering.");
+      await loadOfferings();
     } finally {
       setDeletingOfferingId(null);
     }
@@ -659,20 +714,37 @@ export default function OfferingsSection({
                     <ShieldAlert className="size-4 shrink-0 text-amber-500" />
                     <span>Admin Controls · Managing {currentOffering.name}</span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={isClosingThis}
-                    onClick={() => handleCloseOffering(currentOffering)}
-                    className="h-8 px-3 rounded-lg text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 shrink-0"
-                  >
-                    {isClosingThis ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Archive className="size-3.5" />
-                    )}
-                    <span>Close Deal & Move to Past Offerings</span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={deletingOfferingId === currentOffering.offeringId}
+                      onClick={() => handleDeleteOffering(currentOffering)}
+                      className="h-8 px-2.5 rounded-lg text-xs font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 cursor-pointer inline-flex items-center gap-1.5 shrink-0"
+                      title="Permanently delete this active offering"
+                    >
+                      {deletingOfferingId === currentOffering.offeringId ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3.5" />
+                      )}
+                      <span>Delete</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={isClosingThis}
+                      onClick={() => handleCloseOffering(currentOffering)}
+                      className="h-8 px-3 rounded-lg text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 shrink-0"
+                    >
+                      {isClosingThis ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Archive className="size-3.5" />
+                      )}
+                      <span>Close Deal & Move to Past Offerings</span>
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -912,63 +984,79 @@ export default function OfferingsSection({
       {/* TAB CONTENT: PAST OFFERINGS */}
       {activeTab === "past" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {pastOfferings.map((offering, idx) => (
-            <div
-              key={`${offering.offeringId || idx}-${idx}`}
-              className="rounded-2xl border border-border bg-card text-card-foreground p-6 shadow-xs space-y-3.5"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-border text-xs font-bold">
-                <span className="uppercase tracking-wider px-2.5 py-1 rounded-md bg-muted/60 text-foreground border border-border">
-                  {offering.pastBadge || offering.roundType || "Direct SPV"}
-                </span>
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  {offering.pastStatusText || "Funded & Closed"}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-foreground">{offering.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                  {offering.description}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 pt-2 text-center text-xs font-semibold">
-                <div className="rounded-xl bg-muted/30 border border-border/60 p-3 space-y-0.5">
-                  <span className="text-xs uppercase text-muted-foreground block font-bold">Valuation</span>
-                  <p className="text-base font-bold text-foreground">{offering.valuation}</p>
+          {pastOfferings.map((offering, idx) => {
+            const closedDateText = formatClosedMonthYear(offering);
+            return (
+              <div
+                key={`${offering.offeringId || idx}-${idx}`}
+                className="rounded-2xl border border-border bg-card text-card-foreground p-6 shadow-xs space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between gap-2 pb-3 border-b border-border text-xs font-bold">
+                    <span className="uppercase tracking-wider px-2.5 py-1 rounded-md bg-muted/60 text-foreground border border-border">
+                      {offering.pastBadge || offering.roundType || "Direct SPV"}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <CheckCircle2 className="size-3 text-emerald-500" />
+                      {offering.pastStatusText || "Funded & Closed"}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">{offering.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                      {offering.description}
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-xl bg-muted/30 border border-border/60 p-3 space-y-0.5">
-                  <span className="text-xs uppercase text-muted-foreground block font-bold">Status</span>
-                  <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                    {offering.pastStatusText || "Closed"}
-                  </p>
-                </div>
-              </div>
 
-              {/* Admin Delete Action for Past Offering */}
-              {isAdmin && (
-                <div className="pt-3 border-t border-border/80 flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                    <ShieldAlert className="size-3.5 text-amber-500 shrink-0" />
-                    Admin Action
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={deletingOfferingId === offering.offeringId}
-                    onClick={() => handleDeletePastOffering(offering)}
-                    className="h-8 px-2.5 rounded-lg text-xs font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
-                  >
-                    {deletingOfferingId === offering.offeringId ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="size-3.5" />
-                    )}
-                    <span>Delete Offering</span>
-                  </Button>
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+                    <div className="rounded-xl bg-muted/40 border border-border/70 p-3 space-y-1">
+                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground block font-bold">
+                        Valuation
+                      </span>
+                      <p className="text-base sm:text-lg font-bold text-foreground">
+                        {offering.valuation}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 p-3 space-y-1">
+                      <span className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block font-bold flex items-center gap-1">
+                        <CalendarDays className="size-3 text-emerald-500" /> Closed On
+                      </span>
+                      <p className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                        {closedDateText}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Admin Delete Action for Past Offering */}
+                  {isAdmin && (
+                    <div className="pt-3 border-t border-border/80 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <ShieldAlert className="size-3.5 text-amber-500 shrink-0" />
+                        Admin Action
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={deletingOfferingId === offering.offeringId}
+                        onClick={() => handleDeleteOffering(offering)}
+                        className="h-8 px-2.5 rounded-lg text-xs font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
+                      >
+                        {deletingOfferingId === offering.offeringId ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-3.5" />
+                        )}
+                        <span>Delete Offering</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
 

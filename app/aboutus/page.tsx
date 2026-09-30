@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ArrowLeft, TrendingUp, Users, ShieldCheck, FileCheck2 } from "lucide-react";
+import { ArrowLeft, TrendingUp, Users, ShieldCheck, FileCheck2, DollarSign } from "lucide-react";
 
 export const metadata = {
-  title: "About Us | Apex Krish Capital (Test Build)",
-  description: "Learn about Apex Krish Capital, our investment philosophy, and frontier tech thesis.",
+  title: "About Us | Apex Krish Capital",
+  description: "Learn about Apex Krish Capital, our accessible $5,000 SPV syndicate model, and frontier tech investment thesis.",
 };
 
 export default function AboutPage() {
@@ -27,26 +27,21 @@ export default function AboutPage() {
             Disciplined Research & Curated Access
           </h1>
           <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-            Apex Krish Capital is dedicated to providing accredited investors with
-            exclusive access to private equity opportunities in frontier technology
-            sectors—focused on artificial intelligence, biotechnology, and advanced
-            computing.
+            Apex Krish Capital is a private investment syndicate providing accredited investors with curated access to vetted private equity and early-stage opportunities in frontier technology—with accessible $5,000 minimum checks rather than conventional $50,000+ institutional barriers.
           </p>
         </div>
 
         {/* Core Pillars */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-border bg-card text-card-foreground p-6 space-y-3 shadow-xs">
-            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-foreground">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+              <DollarSign className="w-4 h-4" />
             </div>
             <h2 className="text-base font-semibold text-card-foreground">
-              Innovative Investment Strategies
+              Accessible $5,000 Minimum Entry
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              We leverage disciplined research and market insights to identify and
-              invest in transformative sectors, ensuring long-term value for our
-              investors.
+              We provide better access to smaller accredited investors by offering low $5,000 entry minimums—opening high-conviction deals typically walled off by $50,000+ private equity minimums.
             </p>
           </div>
 
@@ -58,22 +53,19 @@ export default function AboutPage() {
               Direct SPV Model
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Our Special Purpose Vehicle model allows investors to participate in
-              specific, ring-fenced opportunities with maximum transparency and risk
-              isolation.
+              Our Special Purpose Vehicle model ring-fences each deal in its own Delaware Series LLC, providing investors with direct beneficial ownership, liability segregation, and cap table simplicity.
             </p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card text-card-foreground p-6 space-y-3 shadow-xs">
             <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-foreground">
-              <Users className="w-4 h-4" />
+              <TrendingUp className="w-4 h-4" />
             </div>
             <h2 className="text-base font-semibold text-card-foreground">
-              Expert Team of Professionals
+              Curated Frontier Tech Sourcing
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Seasoned experts with extensive experience in private equity, technology
-              investments, and collaborative syndicate management.
+              We leverage disciplined diligence and market networks to source allocations in category-defining leaders across AI infrastructure, autonomous intelligence, and computing.
             </p>
           </div>
 
@@ -82,11 +74,10 @@ export default function AboutPage() {
               <ShieldCheck className="w-4 h-4" />
             </div>
             <h2 className="text-base font-semibold text-card-foreground">
-              Commitment to Transparency
+              Fiduciary Alignment & Transparency
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Clear communication, continuous portfolio marks, and fiduciary integrity
-              throughout every investment lifecycle.
+              A 2% minimum management fee and standard contractual carry terms ensure complete alignment, clear communication, and fiduciary integrity throughout the entire lifecycle.
             </p>
           </div>
         </div>
@@ -107,7 +98,7 @@ export default function AboutPage() {
 
       {/* Minimal Footer */}
       <footer className="mt-auto border-t border-border bg-background py-6 px-4 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} Apex Krish Capital. Test Build / Preview Release.</p>
+        <p>© {new Date().getFullYear()} Apex Krish Capital. All Rights Reserved.</p>
       </footer>
     </div>
   );

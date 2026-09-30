@@ -39,6 +39,7 @@ import {
   Sparkles,
   MessageCircle,
   Share2,
+  Trash2,
 } from 'lucide-react'
 import {
   Select,
@@ -78,6 +79,7 @@ type AdminCommitment = {
   userVerificationStatus: string
   offeringId: string
   offeringTitle: string
+  offeringStatus?: string
   type: 'interest' | 'commitment'
   amount: number | null
   status: 'active' | 'wire_received' | 'allocated' | 'cancelled' | string
@@ -115,6 +117,9 @@ type OfferingMetric = {
   valuation: string
   status: 'active' | 'closing_soon' | 'funded' | 'upcoming' | string
   category: string
+  closingDate?: string
+  closedAt?: string | Date
+  closedMonthYear?: string
   committedCapital: number
   commitmentsCount: number
   interestsCount: number
@@ -234,6 +239,28 @@ function formatApplicationStatus(status?: string) {
   }
 }
 
+function formatClosedMonthYearAdmin(deal: OfferingMetric): string {
+  if (deal.closedMonthYear && deal.closedMonthYear !== 'Closed' && deal.closedMonthYear !== 'Open') {
+    return deal.closedMonthYear
+  }
+  if (deal.closedAt) {
+    try {
+      const d = new Date(deal.closedAt)
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      }
+    } catch {}
+  }
+  if (deal.closingDate && deal.closingDate !== 'Closed' && deal.closingDate !== 'Open') {
+    const cleaned = deal.closingDate.replace(/\d+,\s*/, '').replace(/^\d{1,2}\s+/, '').trim()
+    if (cleaned && cleaned !== 'Closed' && cleaned !== 'Open') return cleaned
+  }
+  if (deal.offeringId === 'scale-ai') return 'Jul 2026'
+  if (deal.offeringId === 'xai') return 'Dec 2024'
+  if (deal.offeringId === 'neuralink') return 'Nov 2024'
+  return 'Closed'
+}
+
 const STAGES = [
   "Seed",
   "Series A",
@@ -291,8 +318,8 @@ export default function AdminPage() {
   const [appSectorFilter, setAppSectorFilter] = useState<string>('all')
   const [appDeckFilter, setAppDeckFilter] = useState<'all' | 'has_deck' | 'no_deck'>('all')
 
-  // Deal Cards Filter: All vs Active vs Closed
-  const [dealFilter, setDealFilter] = useState<'all' | 'active' | 'closed'>('all')
+  // Commitments Table View: Active vs Closed
+  const [commitmentView, setCommitmentView] = useState<'active' | 'closed'>('active')
 
   // Commitments Table Filters
   const [selectedOfferingId, setSelectedOfferingId] = useState<string>('all')
@@ -621,15 +648,120 @@ export default function AdminPage() {
     }
   }
 
+  // Admin: Delete Offering (Active or Closed)
+  async function handleDeleteDeal(deal: OfferingMetric) {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete '${deal.title}'? This will remove it from active and past offerings across the entire site.`
+    )
+    if (!confirmDelete) return
+
+    // Optimistically update offerings list
+    const prevOfferings = [...offerings]
+    setOfferings((prev) => prev.filter((o) => o.offeringId !== deal.offeringId))
+    if (selectedOfferingId === deal.offeringId) {
+      setSelectedOfferingId('all')
+    }
+
+    try {
+      const res = await fetch(`/api/admin/offerings?offeringId=${encodeURIComponent(deal.offeringId)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'Failed to delete offering.')
+      }
+
+      // Re-fetch commitments data to update stats and table counts
+      const refreshRes = await fetch('/api/admin/commitments', { cache: 'no-store' })
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json()
+        setOfferings(refreshData.offerings || [])
+        if (refreshData.stats) setCommitmentStats(refreshData.stats)
+        if (refreshData.allCommitments) setCommitments(refreshData.allCommitments)
+      }
+    } catch (err: any) {
+      setOfferings(prevOfferings)
+      alert(err.message || 'Failed to delete offering.')
+    }
+  }
+
+  // Admin: Close Offering
+  async function handleCloseDeal(deal: OfferingMetric) {
+    const nowStr = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    const confirmClose = window.confirm(
+      `Are you sure you want to close '${deal.title}'? It will be marked as closed in ${nowStr} and moved to past offerings.`
+    )
+    if (!confirmClose) return
+
+    // Optimistically update offerings list
+    const prevOfferings = [...offerings]
+    setOfferings((prev) =>
+      prev.map((o) =>
+        o.offeringId === deal.offeringId
+          ? { ...o, status: 'closed', closedMonthYear: nowStr, closingDate: nowStr }
+          : o
+      )
+    )
+
+    try {
+      const res = await fetch('/api/admin/offerings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offeringId: deal.offeringId,
+          status: 'closed',
+          pastStatusText: 'Funded & Closed',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to close offering.')
+      }
+
+      // Re-fetch commitments data to synchronize state
+      const refreshRes = await fetch('/api/admin/commitments', { cache: 'no-store' })
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json()
+        setOfferings(refreshData.offerings || [])
+        if (refreshData.stats) setCommitmentStats(refreshData.stats)
+        if (refreshData.allCommitments) setCommitments(refreshData.allCommitments)
+      }
+    } catch (err: any) {
+      setOfferings(prevOfferings)
+      alert(err.message || 'Failed to close offering.')
+    }
+  }
+
+  // Active vs Closed Commitments Count
+  const activeCommitmentsCount = useMemo(() => {
+    return commitments.filter((item) => {
+      const deal = offerings.find((o) => o.offeringId === item.offeringId)
+      return deal?.status === 'active' || deal?.status === 'closing_soon' || item.offeringStatus === 'active'
+    }).length
+  }, [commitments, offerings])
+
+  const closedCommitmentsCount = useMemo(() => {
+    return commitments.filter((item) => {
+      const deal = offerings.find((o) => o.offeringId === item.offeringId)
+      return deal?.status === 'closed' || deal?.status === 'funded' || deal?.status === 'archived' || item.offeringStatus === 'closed'
+    }).length
+  }, [commitments, offerings])
+
   // Filtered Commitments
   const filteredCommitments = useMemo(() => {
     return commitments.filter((item) => {
+      const deal = offerings.find((o) => o.offeringId === item.offeringId)
+      const isDealActive = deal?.status === 'active' || deal?.status === 'closing_soon' || item.offeringStatus === 'active'
+      const isDealClosed = deal?.status === 'closed' || deal?.status === 'funded' || deal?.status === 'archived' || item.offeringStatus === 'closed'
+
+      if (commitmentView === 'active' && !isDealActive) return false
+      if (commitmentView === 'closed' && !isDealClosed) return false
+
       if (selectedOfferingId === 'active_only') {
-        const deal = offerings.find((o) => o.offeringId === item.offeringId)
-        if (!deal || (deal.status !== 'active' && deal.status !== 'closing_soon')) return false
+        if (!isDealActive) return false
       } else if (selectedOfferingId === 'closed_only') {
-        const deal = offerings.find((o) => o.offeringId === item.offeringId)
-        if (!deal || (deal.status !== 'funded' && deal.status !== 'archived' && deal.status !== 'closed')) return false
+        if (!isDealClosed) return false
       } else if (selectedOfferingId !== 'all' && item.offeringId !== selectedOfferingId) {
         return false
       }
@@ -646,7 +778,7 @@ export default function AdminPage() {
       }
       return true
     })
-  }, [commitments, offerings, selectedOfferingId, selectedType, selectedStatus, searchQuery])
+  }, [commitments, offerings, commitmentView, selectedOfferingId, selectedType, selectedStatus, searchQuery])
 
   // Filtered Users
   const filteredUsers = useMemo(() => {
@@ -776,16 +908,6 @@ export default function AdminPage() {
     [offerings]
   )
 
-  const displayedOfferings = useMemo(() => {
-    if (dealFilter === 'active') {
-      return offerings.filter((o) => o.status === 'active' || o.status === 'closing_soon')
-    }
-    if (dealFilter === 'closed') {
-      return offerings.filter((o) => o.status === 'funded' || o.status === 'archived' || o.status === 'closed')
-    }
-    return offerings
-  }, [offerings, dealFilter])
-
   return (
     <main className="min-h-screen bg-background text-foreground selection:bg-foreground selection:text-background pb-16 pt-24 sm:pt-28 font-sans">
       <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 md:px-8 space-y-8">
@@ -814,59 +936,22 @@ export default function AdminPage() {
 
         {/* DEAL CARDS SECTION */}
         <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <div className="inline-flex rounded-2xl border border-border bg-muted/40 p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setDealFilter('all')}
-                className={cn(
-                  'px-3.5 py-1.5 rounded-xl font-medium transition cursor-pointer',
-                  dealFilter === 'all'
-                    ? 'bg-background text-foreground font-bold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                All ({offerings.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setDealFilter('active')}
-                className={cn(
-                  'px-3.5 py-1.5 rounded-xl font-medium transition cursor-pointer flex items-center gap-1.5',
-                  dealFilter === 'active'
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                Active ({activeDealsCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setDealFilter('closed')}
-                className={cn(
-                  'px-3.5 py-1.5 rounded-xl font-medium transition cursor-pointer',
-                  dealFilter === 'closed'
-                    ? 'bg-background text-foreground font-bold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Closed ({closedDealsCount})
-              </button>
-            </div>
-
-            <span className="text-xs text-muted-foreground font-medium">Click card to isolate commitments</span>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {displayedOfferings.map((deal, idx) => {
+            {offerings.map((deal, idx) => {
               const isSelected = selectedOfferingId === deal.offeringId
               const isActive = deal.status === 'active' || deal.status === 'closing_soon'
 
               return (
                 <div
                   key={`${deal.offeringId || idx}-${idx}`}
-                  onClick={() => setSelectedOfferingId(isSelected ? 'all' : deal.offeringId)}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedOfferingId('all')
+                    } else {
+                      setSelectedOfferingId(deal.offeringId)
+                      setCommitmentView(isActive ? 'active' : 'closed')
+                    }
+                  }}
                   className={cn(
                     'group relative rounded-2xl border p-4.5 transition-all cursor-pointer flex flex-col justify-between gap-4 shadow-xs',
                     isSelected
@@ -882,6 +967,7 @@ export default function AdminPage() {
                         </h3>
                         <span className="text-xs text-muted-foreground font-medium block mt-0.5">
                           {deal.valuation} • Cap ${deal.targetAllocation.toLocaleString()}
+                          {!isActive && ` • Closed ${formatClosedMonthYearAdmin(deal)}`}
                         </span>
                       </div>
 
@@ -892,7 +978,7 @@ export default function AdminPage() {
                         </span>
                       ) : (
                         <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border shrink-0">
-                          Closed
+                          Closed • {formatClosedMonthYearAdmin(deal)}
                         </span>
                       )}
                     </div>
@@ -926,34 +1012,73 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {deal.commitmentsCount} LPs ({deal.interestsCount} Int.)
-                    </span>
+                  <div className="pt-2 border-t border-border/60 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+                      <span>{deal.commitmentsCount} LP{deal.commitmentsCount === 1 ? '' : 's'}</span>
+                      <span>{deal.interestsCount} Interest{deal.interestsCount === 1 ? '' : 's'}</span>
+                    </div>
 
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={isActive ? 'default' : 'outline'}
-                      disabled={!isActive}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (isActive) handleOpenBroadcastModal(deal)
-                      }}
-                      className={cn(
-                        'h-8 text-xs font-semibold rounded-xl gap-1.5 px-3',
-                        !isActive && 'opacity-60 cursor-not-allowed pointer-events-none'
-                      )}
-                    >
-                      {isActive ? (
-                        <>
+                    {!isActive ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteDeal(deal)
+                        }}
+                        className="w-full h-8 text-xs font-semibold rounded-xl gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span>Delete Deal</span>
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 w-full">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenBroadcastModal(deal)
+                          }}
+                          className="flex-1 h-8 text-xs font-semibold rounded-xl gap-1.5 px-2.5 cursor-pointer shadow-xs"
+                          title="Broadcast deal subscription portal link"
+                        >
                           <Send className="size-3.5" />
-                          <span>Broadcast Link</span>
-                        </>
-                      ) : (
-                        <span>Deal Closed</span>
-                      )}
-                    </Button>
+                          <span className="truncate">Broadcast</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCloseDeal(deal)
+                          }}
+                          className="h-8 text-xs font-semibold rounded-xl gap-1 px-2.5 cursor-pointer text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 border-amber-500/30 shrink-0"
+                          title="Close this deal and move to Past Offerings"
+                        >
+                          <Archive className="size-3.5" />
+                          <span>Close</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteDeal(deal)
+                          }}
+                          className="h-8 size-8 p-0 flex items-center justify-center text-xs font-semibold rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 cursor-pointer shrink-0"
+                          title="Permanently delete this offering"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -965,15 +1090,36 @@ export default function AdminPage() {
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={() => setActiveTab('commitments')}
+              onClick={() => {
+                setActiveTab('commitments')
+                setCommitmentView('active')
+                setSelectedOfferingId('all')
+              }}
               className={cn(
-                'rounded-full px-4.5 py-2 text-xs font-semibold transition cursor-pointer',
-                activeTab === 'commitments'
+                'rounded-full px-4.5 py-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5',
+                activeTab === 'commitments' && commitmentView === 'active'
                   ? 'bg-foreground text-background shadow-xs'
                   : 'bg-muted/50 text-muted-foreground hover:text-foreground'
               )}
             >
-              Commitments ({commitments.length})
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Active Commitments ({activeCommitmentsCount})</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('commitments')
+                setCommitmentView('closed')
+                setSelectedOfferingId('all')
+              }}
+              className={cn(
+                'rounded-full px-4.5 py-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5',
+                activeTab === 'commitments' && commitmentView === 'closed'
+                  ? 'bg-foreground text-background shadow-xs'
+                  : 'bg-muted/50 text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Archive className="size-3 text-muted-foreground" />
+              <span>Closed Deals Commitments ({closedCommitmentsCount})</span>
             </button>
             <button
               onClick={() => setActiveTab('users')}
@@ -1008,7 +1154,7 @@ export default function AdminPage() {
               className="h-9 rounded-full text-xs font-semibold gap-2 px-3.5"
             >
               <Download className="size-3.5 text-muted-foreground" />
-              <span>Export CSV</span>
+              <span>Export {commitmentView === 'active' ? 'Active' : 'Closed'} CSV</span>
             </Button>
           )}
         </div>
@@ -1053,8 +1199,17 @@ export default function AdminPage() {
               ) : commitmentError ? (
                 <div className="p-8 text-center text-sm text-destructive">{commitmentError}</div>
               ) : filteredCommitments.length === 0 ? (
-                <div className="p-12 text-center text-sm text-muted-foreground">
-                  No commitments match the selected filter.
+                <div className="p-12 text-center text-sm text-muted-foreground space-y-1">
+                  <p className="font-semibold text-foreground">
+                    {commitmentView === 'active'
+                      ? 'No active commitments found for live offerings.'
+                      : 'No commitments in closed deals archive.'}
+                  </p>
+                  <p className="text-xs">
+                    {commitmentView === 'active'
+                      ? 'When investors express interest or commit to active deals, they will appear here.'
+                      : 'Closed deal allocations are archived here when deals are funded and closed.'}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1062,7 +1217,7 @@ export default function AdminPage() {
                     <thead className="border-b border-border bg-muted/40 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       <tr>
                         <th className="px-5 py-3.5">Investor</th>
-                        <th className="px-5 py-3.5">Offering</th>
+                        <th className="px-5 py-3.5">{commitmentView === 'active' ? 'Active Offering' : 'Closed Deal'}</th>
                         <th className="px-5 py-3.5">Type &amp; Amount</th>
                         <th className="px-5 py-3.5">Status</th>
                         <th className="px-5 py-3.5">Verification</th>
@@ -1070,69 +1225,79 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {filteredCommitments.map((item) => (
-                        <tr key={item.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-4">
-                            <div className="font-semibold text-foreground">{item.userName}</div>
-                            <div className="text-xs text-muted-foreground">{item.userEmail}</div>
-                            {item.userPhone && (
-                              <div className="text-[11px] text-muted-foreground/80 flex items-center gap-1 mt-0.5">
-                                <Phone className="size-2.5" />
-                                <span>{item.userPhone}</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="font-medium text-foreground">{item.offeringTitle}</span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="font-bold text-foreground">
-                              {item.amount ? `$${item.amount.toLocaleString()}` : '—'}
-                            </div>
-                            <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
-                              {item.type}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="w-[145px]">
-                              <Select
-                                value={item.status || 'active'}
-                                onValueChange={(val) => handleCommitmentStatusChange(item.id, val)}
-                                disabled={updatingCommitmentId === item.id}
-                              >
-                                <SelectTrigger
-                                  className={cn(
-                                    'h-8 text-xs font-semibold rounded-full border',
-                                    getCommitmentStatusBadgeClass(item.status)
-                                  )}
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="text-xs">
-                                  <SelectItem value="active">Active</SelectItem>
-                                  <SelectItem value="wire_received">Wire Received</SelectItem>
-                                  <SelectItem value="allocated">Allocated</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <span
-                              className={cn(
-                                'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border',
-                                getVerificationBadgeClass(item.userVerificationStatus)
+                      {filteredCommitments.map((item) => {
+                        const deal = offerings.find((o) => o.offeringId === item.offeringId);
+                        const isClosedDeal = deal ? (deal.status === 'closed' || deal.status === 'funded' || deal.status === 'archived') : item.offeringStatus === 'closed';
+
+                        return (
+                          <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-5 py-4">
+                              <div className="font-semibold text-foreground">{item.userName}</div>
+                              <div className="text-xs text-muted-foreground">{item.userEmail}</div>
+                              {item.userPhone && (
+                                <div className="text-[11px] text-muted-foreground/80 flex items-center gap-1 mt-0.5">
+                                  <Phone className="size-2.5" />
+                                  <span>{item.userPhone}</span>
+                                </div>
                               )}
-                            >
-                              <span className="size-1.5 rounded-full bg-current" />
-                              {formatVerificationStatus(item.userVerificationStatus)}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-muted-foreground text-xs font-medium">
-                            {formatDate(item.createdAt)}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="font-medium text-foreground">{item.offeringTitle}</div>
+                              {isClosedDeal && deal && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full mt-1 border border-border">
+                                  Closed • {formatClosedMonthYearAdmin(deal)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="font-bold text-foreground">
+                                {item.amount ? `$${item.amount.toLocaleString()}` : '—'}
+                              </div>
+                              <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+                                {item.type}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="w-[145px]">
+                                <Select
+                                  value={item.status || 'active'}
+                                  onValueChange={(val) => handleCommitmentStatusChange(item.id, val)}
+                                  disabled={updatingCommitmentId === item.id}
+                                >
+                                  <SelectTrigger
+                                    className={cn(
+                                      'h-8 text-xs font-semibold rounded-full border',
+                                      getCommitmentStatusBadgeClass(item.status)
+                                    )}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="text-xs">
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="wire_received">Wire Received</SelectItem>
+                                    <SelectItem value="allocated">Allocated</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border',
+                                  getVerificationBadgeClass(item.userVerificationStatus)
+                                )}
+                              >
+                                <span className="size-1.5 rounded-full bg-current" />
+                                {formatVerificationStatus(item.userVerificationStatus)}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-muted-foreground text-xs font-medium">
+                              {formatDate(item.createdAt)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     siteName: "Apex Krish Capital",
     title: "Apex Krish Capital | Private Equity & Frontier Tech Syndicate",
     description:
-      "Curated access to vetted private equity and early-stage opportunities for accredited investors. 10% performance carry, zero management fees.",
+      "Curated access to vetted private equity and early-stage opportunities for accredited investors.",
     images: [
       {
         url: "/apexkrishnalogo.png",

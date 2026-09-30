@@ -21,7 +21,6 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  Users2,
   FileCheck2,
   CheckCircle2,
   Loader2,
@@ -138,19 +137,16 @@ export default function BusinessApplicationSection() {
                 </h2>
 
                 <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                  We syndicate <strong className="text-foreground font-semibold">$500K to $5M+</strong> co-investment SPVs into top-tier tech startups alongside leading venture firms. Zero founder fees and single-line cap table execution.
+                  We syndicate <strong className="text-foreground font-semibold">$200K and above</strong> co-investment SPVs into top-tier tech startups alongside leading venture firms. Minimal founder costs and single cap table entry execution.
                 </p>
 
                 {/* Quick tags */}
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-muted text-xs font-medium text-foreground">
-                    <Zap className="size-3 text-emerald-500" /> 14-Day SPV Close
+                    <Zap className="size-3 text-emerald-500" /> 30-Day SPV Close
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-muted text-xs font-medium text-foreground">
-                    <FileCheck2 className="size-3 text-primary" /> Single Line Cap Table
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-muted text-xs font-medium text-foreground">
-                    <Users2 className="size-3 text-emerald-500" /> 200+ Tech Operators
+                    <FileCheck2 className="size-3 text-primary" /> Single Cap Table Entry
                   </span>
                 </div>
               </div>
@@ -237,15 +233,15 @@ export default function BusinessApplicationSection() {
                     <ul className="space-y-3.5 text-xs sm:text-sm text-muted-foreground">
                       <li className="flex items-start gap-2.5">
                         <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
-                        <span><strong className="text-foreground">Zero Founder Cost:</strong> We do not charge founders any management fees or placement cuts.</span>
+                        <span><strong className="text-foreground">Minimal Founder Cost:</strong> Streamlined SPV structuring with minimal expenses and straightforward execution.</span>
                       </li>
                       <li className="flex items-start gap-2.5">
                         <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
-                        <span><strong className="text-foreground">1-Line SPV on Cap Table:</strong> All syndicate investors roll into a single Delaware SPV entity.</span>
+                        <span><strong className="text-foreground">Single cap table entry:</strong> All syndicate investors roll into a single Delaware SPV entity.</span>
                       </li>
                       <li className="flex items-start gap-2.5">
                         <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
-                        <span><strong className="text-foreground">High-Signal LPs:</strong> Our investors include former unicorn founders, AI researchers, and family offices.</span>
+                        <span><strong className="text-foreground">High-Signal LPs:</strong> Our syndicate includes seasoned operators, AI researchers, and family offices.</span>
                       </li>
                       <li className="flex items-start gap-2.5">
                         <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
@@ -393,7 +389,7 @@ export default function BusinessApplicationSection() {
                               <SelectValue placeholder="Select target allocation" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="$250,000 - $500,000">$250K – $500K</SelectItem>
+                              <SelectItem value="$200,000 - $500,000">$200K – $500K</SelectItem>
                               <SelectItem value="$500,000 - $1,000,000">$500K – $1.0M</SelectItem>
                               <SelectItem value="$1,000,000 - $3,000,000">$1.0M – $3.0M</SelectItem>
                               <SelectItem value="$3,000,000 - $5,000,000">$3.0M – $5.0M</SelectItem>

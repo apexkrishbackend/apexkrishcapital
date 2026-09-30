@@ -12,7 +12,7 @@ export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
     closingDate: "Oct 8, 2026",
     valuation: "<$4B",
     valuationSub: "Pre-money round",
-    fundingGoal: "$125K",
+    fundingGoal: "$123K",
     goalSub: "Allocation cap",
     minCheck: "$5K",
     minCheckSub: "USD accredited entry",
@@ -26,8 +26,8 @@ export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
   },
   {
     offeringId: "cursor-anysphere",
-    name: "Cursor (Anysphere)",
     badge: "Series A/B SPV Allocation",
+    name: "Cursor (Anysphere)",
     roundType: "Growth SPV Series",
     description:
       "Cursor (Anysphere) is the AI-first code editor and development environment transforming software creation with autonomous developer agent infrastructure.",
@@ -53,7 +53,8 @@ export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
     roundType: "Series F SPV",
     description:
       "Foundational AI data infrastructure and model validation platform.",
-    closingDate: "Closed",
+    closingDate: "Jul 2026",
+    closedMonthYear: "Jul 2026",
     valuation: "$14.0B",
     valuationSub: "Series F round",
     fundingGoal: "$250K",
@@ -75,7 +76,8 @@ export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
     roundType: "Series B SPV",
     description:
       "Frontier artificial intelligence research, Grok models, and supercomputing clusters.",
-    closingDate: "Closed",
+    closingDate: "Dec 2024",
+    closedMonthYear: "Dec 2024",
     valuation: "$24.0B",
     valuationSub: "Series B round",
     fundingGoal: "$500K",
@@ -97,7 +99,8 @@ export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
     roundType: "Direct SPV",
     description:
       "Brain-computer interface (BCI) technology restoring autonomy and neural function.",
-    closingDate: "Closed",
+    closingDate: "Nov 2024",
+    closedMonthYear: "Nov 2024",
     valuation: "$7.0B",
     valuationSub: "Direct SPV round",
     fundingGoal: "$200K",
@@ -115,33 +118,61 @@ export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
 ];
 
 /**
- * Ensures MongoDB is initialized with default offerings and purges any duplicate documents.
+ * Ensures MongoDB is initialized with default offerings only if none exist,
+ * and purges duplicate documents.
  */
 export async function ensureOfferingsSeeded() {
   await dbConnect();
 
-  // 1. Upsert default seed offerings
-  for (const seed of DEFAULT_SEED_OFFERINGS) {
-    if (!seed.offeringId) continue;
-    await Offering.findOneAndUpdate(
-      { offeringId: seed.offeringId },
-      { $setOnInsert: seed },
-      { upsert: true, new: true }
-    );
+  const count = await Offering.countDocuments();
+  if (count === 0) {
+    for (const seed of DEFAULT_SEED_OFFERINGS) {
+      if (!seed.offeringId) continue;
+      await Offering.create(seed);
+    }
+  } else {
+    // Keep micro1-inc allocation synchronized if previously seeded with $125K
+    try {
+      await Offering.updateMany(
+        { offeringId: "micro1-inc", fundingGoal: "$125K" },
+        { $set: { fundingGoal: "$123K" } }
+      );
+      // Sync past seed offerings with clean closedMonthYear
+      await Offering.updateOne(
+        { offeringId: "scale-ai" },
+        { $set: { closedMonthYear: "Jul 2026", closingDate: "Jul 2026" } }
+      );
+      await Offering.updateOne(
+        { offeringId: "xai" },
+        { $set: { closedMonthYear: "Dec 2024", closingDate: "Dec 2024" } }
+      );
+      await Offering.updateOne(
+        { offeringId: "neuralink" },
+        { $set: { closedMonthYear: "Nov 2024", closingDate: "Nov 2024" } }
+      );
+    } catch {
+      // ignore
+    }
   }
 
-  // 2. Clean up any historical duplicate documents from previous parallel seeding runs
+  // Clean up any historical duplicate documents from parallel runs
   try {
     const allDocs = await Offering.find({}).sort({ updatedAt: -1, createdAt: -1 });
-    const seen = new Set<string>();
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
     const idsToDelete: any[] = [];
 
     for (const doc of allDocs) {
-      if (!doc.offeringId) continue;
-      if (seen.has(doc.offeringId)) {
+      const normalizedName = doc.name?.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+      const normalizedId = doc.offeringId?.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+      if (!normalizedId || !normalizedName) continue;
+
+      if (seenIds.has(normalizedId) || seenNames.has(normalizedName)) {
         idsToDelete.push(doc._id);
       } else {
-        seen.add(doc.offeringId);
+        seenIds.add(normalizedId);
+        seenNames.add(normalizedName);
       }
     }
 
@@ -162,14 +193,21 @@ export async function getLiveOfferings() {
     .sort({ displayOrder: 1, createdAt: -1 })
     .lean();
 
-  // Deduplicate by offeringId
-  const uniqueMap = new Map<string, any>();
+  // Deduplicate by both offeringId and normalized company name
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const uniqueOfferings: any[] = [];
+
   for (const off of allOfferings) {
-    if (off.offeringId && !uniqueMap.has(off.offeringId)) {
-      uniqueMap.set(off.offeringId, off);
+    const normId = off.offeringId?.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+    const normName = off.name?.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+
+    if (normId && normName && !seenIds.has(normId) && !seenNames.has(normName)) {
+      seenIds.add(normId);
+      seenNames.add(normName);
+      uniqueOfferings.push(off);
     }
   }
-  const uniqueOfferings = Array.from(uniqueMap.values());
 
   const activeOfferings = uniqueOfferings.filter((o) => o.status === "active");
   const pastOfferings = uniqueOfferings.filter((o) => o.status === "closed");

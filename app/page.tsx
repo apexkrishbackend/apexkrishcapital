@@ -152,10 +152,10 @@ export default function Home() {
 
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-3">
               <h3 className="text-lg font-bold text-foreground tracking-tight">
-                10% Pure Carry Alignment
+                Standard Vehicle Terms
               </h3>
               <p className="text-base text-muted-foreground leading-relaxed font-normal">
-                We charge zero management fees and cap carry at 10%—half the standard 20%+ fee. Our economic upside is strictly tied to your net profit.
+                Direct SPVs are governed by standardized series operating agreements featuring a 2% minimum management fee and a 10% performance carry on net realized gains.
               </p>
             </div>
 
@@ -213,8 +213,8 @@ export default function Home() {
 
         <div className="space-y-2">
           <p className="font-semibold text-foreground">© {new Date().getFullYear()} Apex Krish Capital. All Rights Reserved.</p>
-          <p className="text-xs max-w-xl mx-auto leading-relaxed text-muted-foreground">
-            Apex Krish Capital provides private market investment opportunities exclusively to accredited investors under SEC Rule 506(c). Past performance is not indicative of future results. Private market securities involve substantial risk of loss.
+          <p className="text-xs max-w-2xl mx-auto leading-relaxed text-muted-foreground">
+            Apex Krish Capital provides private market investment opportunities exclusively to accredited investors under SEC Rule 506(c). Syndicated vehicles operate under standard terms (10% performance carry, 2% minimum management fees). Past performance is not indicative of future results. Private market securities involve substantial risk of loss.
           </p>
         </div>
       </footer>

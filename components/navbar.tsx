@@ -145,7 +145,7 @@ export default function Navbar() {
                     isScrolled ? "text-[16px]" : "text-[17.5px]"
                   )}
                 >
-                  Apex Krish
+                  ApexKrish Capital
                 </span>
               </Link>
             </div>
@@ -284,7 +284,7 @@ export default function Navbar() {
                 Select Persona Portal
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary">
-                Apex Krish
+                ApexKrish Capital
               </span>
             </div>
 

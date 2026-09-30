@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import Offering from "@/models/offering.model";
+import Commitment from "@/models/commitment.model";
 import { logAdminAction } from "@/lib/audit-logger";
 import { getClientIp } from "@/lib/rate-limit";
 import { ensureOfferingsSeeded } from "@/lib/offerings-service";
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
       description: description.trim(),
       valuation: valuation.trim(),
       valuationSub: valuationSub?.trim() || "Pre-money round",
-      fundingGoal: fundingGoal?.trim() || "$125K",
+      fundingGoal: fundingGoal?.trim() || "$123K",
       goalSub: goalSub?.trim() || "Allocation cap",
       minCheck: minCheck?.trim() || "$5K",
       minCheckSub: minCheckSub?.trim() || "USD accredited entry",
@@ -147,9 +148,18 @@ export async function PATCH(req: NextRequest) {
     if (pastStatusText) updatePayload.pastStatusText = pastStatusText;
     if (closingDate) updatePayload.closingDate = closingDate;
 
-    // If closing offering, ensure pastStatusText defaults appropriately
-    if (status === "closed" && !pastStatusText) {
-      updatePayload.pastStatusText = "Funded & Closed";
+    // If closing offering, record the close date and month/year
+    if (status === "closed") {
+      const now = new Date();
+      const monthYear = now.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      updatePayload.closedAt = updatePayload.closedAt || now;
+      updatePayload.closedMonthYear = updatePayload.closedMonthYear || monthYear;
+      if (!closingDate) {
+        updatePayload.closingDate = monthYear;
+      }
+      if (!pastStatusText) {
+        updatePayload.pastStatusText = "Funded & Closed";
+      }
     }
 
     const updatedOffering = await Offering.findOneAndUpdate(
@@ -191,6 +201,110 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Failed to update offering:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { userId, sessionClaims } = await auth();
+    const clerkUser = await currentUser();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (sessionClaims?.metadata?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden: Admin privileges required" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    let offeringId = searchParams.get("offeringId");
+
+    if (!offeringId) {
+      try {
+        const body = await req.json();
+        offeringId = body.offeringId;
+      } catch {}
+    }
+
+    if (!offeringId) {
+      return NextResponse.json({ error: "Offering ID is required." }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    // Clean match by ID, slug, or normalized name
+    const rawId = offeringId.trim();
+    const normalizedId = rawId.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const deletedDocs = await Offering.find({
+      $or: [
+        { offeringId: rawId },
+        { offeringId: rawId.toLowerCase() },
+        { offeringId: normalizedId },
+        { name: new RegExp(`^${rawId}$`, "i") },
+      ],
+    });
+
+    await Offering.deleteMany({
+      $or: [
+        { offeringId: rawId },
+        { offeringId: rawId.toLowerCase() },
+        { offeringId: normalizedId },
+        { name: new RegExp(`^${rawId}$`, "i") },
+      ],
+    });
+
+    // Cascade delete all commitments and interests associated with this deleted offering
+    const allMatchingOfferingIds = Array.from(
+      new Set([
+        rawId,
+        rawId.toLowerCase(),
+        normalizedId,
+        ...deletedDocs.map((d: any) => d.offeringId),
+      ].filter(Boolean))
+    );
+
+    await Commitment.deleteMany({
+      $or: [
+        { offeringId: { $in: allMatchingOfferingIds } },
+        { offeringTitle: new RegExp(`^${rawId}$`, "i") },
+        ...deletedDocs.map((d: any) => ({ offeringTitle: new RegExp(`^${d.name}$`, "i") })),
+      ],
+    });
+
+    const deletedName = deletedDocs[0]?.name || rawId;
+
+    const adminEmail =
+      clerkUser?.primaryEmailAddress?.emailAddress ||
+      clerkUser?.emailAddresses?.[0]?.emailAddress ||
+      undefined;
+
+    await logAdminAction({
+      adminUserId: userId,
+      adminEmail,
+      action: "offering_deleted",
+      targetEntity: "offering",
+      targetId: rawId,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get("user-agent") || undefined,
+      details: {
+        offeringName: deletedName,
+        status: "deleted",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Offering '${deletedName}' deleted successfully.`,
+      deletedOfferingId: rawId,
+    });
+  } catch (error: any) {
+    console.error("Failed to delete offering:", error);
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }
