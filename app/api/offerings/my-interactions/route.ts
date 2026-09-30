@@ -68,6 +68,7 @@ export async function GET() {
 
     return NextResponse.json({
       isSignedIn: true,
+      isAdmin: !!(isAdmin || dbUser?.role === "admin"),
       verificationStatus,
       isProfileSaved,
       interactions: interactionsMap,

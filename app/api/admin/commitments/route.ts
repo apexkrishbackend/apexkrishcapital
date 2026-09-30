@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import Commitment from "@/models/commitment.model";
 import User from "@/models/user.model";
+import Offering from "@/models/offering.model";
 import { OFFERINGS_CATALOG } from "@/lib/constants/offerings";
+import { getLiveOfferings } from "@/lib/offerings-service";
 import { logAdminAction } from "@/lib/audit-logger";
 import { getClientIp } from "@/lib/rate-limit";
 
@@ -55,20 +57,23 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Compute Per-Offering Breakdowns using OFFERINGS_CATALOG + any additional discovered offerings
+    // Fetch live offerings from MongoDB (seeded if empty)
+    const { allOfferings } = await getLiveOfferings();
+
+    // Compute Per-Offering Breakdowns using MongoDB offerings + catalog fallback
     const catalogMap = new Map<string, any>();
-    OFFERINGS_CATALOG.forEach((offering) => {
-      catalogMap.set(offering.id, {
-        offeringId: offering.id,
-        title: offering.title,
-        companyName: offering.companyName,
-        roundName: offering.roundName,
+    allOfferings.forEach((offering: any) => {
+      catalogMap.set(offering.offeringId, {
+        offeringId: offering.offeringId,
+        title: offering.name,
+        companyName: offering.name,
+        roundName: offering.roundType || offering.badge,
         description: offering.description,
-        targetAllocation: offering.targetAllocation,
-        minCheckSize: offering.minCheckSize,
+        targetAllocation: parseFloat((offering.fundingGoal || "125000").replace(/[^0-9.]/g, "")) * (offering.fundingGoal?.includes("K") ? 1000 : offering.fundingGoal?.includes("M") ? 1000000 : 1) || 125000,
+        minCheckSize: offering.minCheckNum || 5000,
         valuation: offering.valuation,
-        status: offering.status,
-        category: offering.category,
+        status: offering.status === "active" ? "active" : "funded",
+        category: offering.roundType || "Direct SPV",
         committedCapital: 0,
         commitmentsCount: 0,
         interestsCount: 0,
@@ -79,6 +84,32 @@ export async function GET(req: NextRequest) {
         isOversubscribed: false,
         oversubscribedAmount: 0,
       });
+    });
+
+    OFFERINGS_CATALOG.forEach((offering) => {
+      if (!catalogMap.has(offering.id)) {
+        catalogMap.set(offering.id, {
+          offeringId: offering.id,
+          title: offering.title,
+          companyName: offering.companyName,
+          roundName: offering.roundName,
+          description: offering.description,
+          targetAllocation: offering.targetAllocation,
+          minCheckSize: offering.minCheckSize,
+          valuation: offering.valuation,
+          status: offering.status,
+          category: offering.category,
+          committedCapital: 0,
+          commitmentsCount: 0,
+          interestsCount: 0,
+          wiresReceivedCapital: 0,
+          allocatedCapital: 0,
+          percentFilled: 0,
+          averageCheckSize: 0,
+          isOversubscribed: false,
+          oversubscribedAmount: 0,
+        });
+      }
     });
 
     allFormatted.forEach((item) => {

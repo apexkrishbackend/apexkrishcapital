@@ -859,13 +859,13 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {displayedOfferings.map((deal) => {
+            {displayedOfferings.map((deal, idx) => {
               const isSelected = selectedOfferingId === deal.offeringId
               const isActive = deal.status === 'active' || deal.status === 'closing_soon'
 
               return (
                 <div
-                  key={deal.offeringId}
+                  key={`${deal.offeringId || idx}-${idx}`}
                   onClick={() => setSelectedOfferingId(isSelected ? 'all' : deal.offeringId)}
                   className={cn(
                     'group relative rounded-2xl border p-4.5 transition-all cursor-pointer flex flex-col justify-between gap-4 shadow-xs',

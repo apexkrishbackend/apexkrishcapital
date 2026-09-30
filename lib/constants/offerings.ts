@@ -21,10 +21,10 @@ export const OFFERINGS_CATALOG: OfferingConfig[] = [
     description: "AI-powered developer vetting platform & pre-IPO talent infrastructure engine.",
     targetAllocation: 125000,
     minCheckSize: 5000,
-    valuation: "$3.7B",
+    valuation: "<$4B",
     status: "active",
     category: "AI Infrastructure",
-    closingDate: "2026-10-15",
+    closingDate: "2026-10-08",
   },
   {
     id: "scale-ai",

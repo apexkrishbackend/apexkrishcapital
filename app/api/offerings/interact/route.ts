@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import User from "@/models/user.model";
 import Commitment from "@/models/commitment.model";
+import Offering from "@/models/offering.model";
 
 // Minimum investments map per offering
 const OFFERING_MINIMUMS: Record<string, { title: string; minAmount: number }> = {
@@ -102,9 +103,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const offeringInfo = OFFERING_MINIMUMS[offeringId] || {
-      title: "Micro1 Inc. - Direct Shares",
-      minAmount: 5000,
+    // Look up offering from DB or fallback catalog
+    const dbOffering = await Offering.findOne({ offeringId }).lean();
+    const offeringInfo = {
+      title: dbOffering?.name || OFFERING_MINIMUMS[offeringId]?.title || offeringId,
+      minAmount: dbOffering?.minCheckNum || OFFERING_MINIMUMS[offeringId]?.minAmount || 5000,
     };
 
     let parsedAmount: number | null = null;
