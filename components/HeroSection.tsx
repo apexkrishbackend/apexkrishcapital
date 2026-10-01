@@ -14,6 +14,7 @@ import {
   Percent,
   UserCheck,
   UserPlus,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,14 @@ export default function HeroSection() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [isProfileSaved, setIsProfileSaved] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  const handleOpenRequestAccess = () => {
+    window.dispatchEvent(
+      new CustomEvent("open-expandable-screen", {
+        detail: { layoutId: "request-access-portal" },
+      })
+    );
+  };
 
   useEffect(() => {
     if (!isClerkLoaded) return;
@@ -117,6 +126,18 @@ export default function HeroSection() {
               </Link>
             </Button>
           )}
+
+          <Button
+            type="button"
+            size="lg"
+            onClick={handleOpenRequestAccess}
+            className="h-12 px-7 rounded-full font-semibold text-sm tracking-wide bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all active:scale-95 cursor-pointer"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Sparkles className="size-4 text-blue-200" />
+              <span>Request Access</span>
+            </span>
+          </Button>
         </div>
 
         {/* Micro Comparison Value Highlights */}

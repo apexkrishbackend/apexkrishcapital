@@ -292,6 +292,15 @@ flowchart TD
   - Documents are encoded to base64 in-memory via the browser `FileReader` API and attached directly to Nodemailer multi-part SMTP emails without requiring persistent cloud storage or disk writes.
 - **Minimalist Workflow**: Streamlined modal focused solely on subject, message, document attachment, and one-click broadcast dispatch.
 
+### 6.7 Request Access Subsystem
+- **Navbar & Hero Section Integration (`components/navbar.tsx`, `components/HeroSection.tsx`)**: Prominent "Request Access" action buttons located in the main navbar header, mobile drawer, and Hero CTA cluster.
+- **Expandable Screen Portal (`components/RequestAccessModal.tsx`)**:
+  - Implements the shared `ExpandableScreen` architecture with smooth animated full-screen modal expansion.
+  - Lists current and active offerings with strict minimalist presentation: **only the name of each offering is displayed** (no valuation, cap, or check details).
+  - Authenticated 1-click request submission with automatic Clerk profile resolution, or simple guest contact capture for prospective investors.
+  - Interactive status badges providing instant visual confirmation upon submission.
+- **Administrator Email Notification**: Instantly dispatches a branded multi-part HTML notification via Nodemailer to all platform administrators alerting them that a specific user has requested access to the given allocation.
+
 ---
 
 ## 7. API Route Specifications & Endpoints
@@ -299,6 +308,7 @@ flowchart TD
 | Endpoint | Methods | Auth Level | Purpose |
 | :--- | :--- | :--- | :--- |
 | `/api/offerings` | `GET` | Public | Returns live active and past offerings grouped from MongoDB. |
+| `/api/offerings/request-access` | `POST` | Public / Auth | Dispatches admin notification emails when an investor requests allocation access. |
 | `/api/offerings/interact` | `POST` | Verified User | Records or updates investor commitment ($5K+ min) or interest. |
 | `/api/offerings/my-interactions` | `GET` | Contextual | Returns authenticated user verification status and active allocations. |
 | `/api/companies/apply` | `POST` | Public | Submits founder syndicate application. |

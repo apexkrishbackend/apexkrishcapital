@@ -8,7 +8,8 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { DropdownMenuAvatar } from "./avatarbutton";
 import DarkModeToggle from "./dark-mode-toggle";
-import { Menu, X, ArrowUpRight, Users, Building2 } from "lucide-react";
+import { Menu, X, ArrowUpRight, Users, Building2, Sparkles } from "lucide-react";
+import RequestAccessModal from "./RequestAccessModal";
 
 export default function Navbar() {
   const router = useRouter();
@@ -77,6 +78,15 @@ export default function Navbar() {
     }
   };
 
+  const handleOpenRequestAccess = () => {
+    setMobileMenuOpen(false);
+    window.dispatchEvent(
+      new CustomEvent("open-expandable-screen", {
+        detail: { layoutId: "request-access-portal" },
+      })
+    );
+  };
+
   return (
     <>
       {/* Desktop & Tablet Floating Navbar with Scroll-Adaptive Elevation */}
@@ -88,8 +98,8 @@ export default function Navbar() {
       >
         <div
           className={cn(
-            "relative w-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            isScrolled ? "max-w-[1040px]" : "max-w-[1160px]"
+            "relative w-full flex items-center justify-center gap-3 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            isScrolled ? "max-w-[1180px]" : "max-w-[1300px]"
           )}
         >
           {/* Scroll-Adaptive Liquid Glass Shell */}
@@ -270,6 +280,21 @@ export default function Navbar() {
               </button>
             </div>
           </div>
+
+          {/* Standalone "Request Access" Pill Button (Outside Right of the Navbar) */}
+          <button
+            type="button"
+            onClick={handleOpenRequestAccess}
+            className={cn(
+              "pointer-events-auto hidden md:inline-flex items-center gap-1.5 rounded-full font-semibold transition-all duration-300 active:scale-95 cursor-pointer shrink-0 shadow-[0_4px_16px_rgba(5,150,105,0.3)] hover:shadow-[0_6px_20px_rgba(5,150,105,0.45)] whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/30",
+              isScrolled
+                ? "py-2 px-4 text-[12.5px]"
+                : "py-2.5 px-5 text-[13px]"
+            )}
+          >
+            <Sparkles className="size-3.5 text-emerald-200 animate-pulse" />
+            <span>Request Access</span>
+          </button>
         </div>
       </header>
 
@@ -318,6 +343,16 @@ export default function Navbar() {
                 <span>For Founders</span>
               </button>
             </div>
+
+            {/* Request Access Mobile Button */}
+            <button
+              type="button"
+              onClick={handleOpenRequestAccess}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Sparkles className="size-3.5 text-emerald-200" />
+              <span>Request Allocation Access</span>
+            </button>
 
             {/* Nav Links */}
             <div className="flex flex-col gap-1 pt-1">
@@ -379,6 +414,10 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Mount Request Access Expandable Screen Modal */}
+      <RequestAccessModal />
     </>
   );
 }
+

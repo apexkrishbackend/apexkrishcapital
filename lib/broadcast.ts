@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import nodemailer from "nodemailer";
+import nodemailer, { Transporter } from "nodemailer";
 
 export interface BroadcastEmailPayload {
   to: string;
@@ -68,9 +68,9 @@ export function generateWhatsAppLink(
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
 
-let cachedTransporter: nodemailer.Transporter | null = null;
+let cachedTransporter: Transporter | null = null;
 
-function getTransporter(): nodemailer.Transporter | null {
+function getTransporter(): Transporter | null {
   if (cachedTransporter) return cachedTransporter;
 
   const smtpHost = process.env.SMTP_HOST;
@@ -273,7 +273,7 @@ export async function sendBroadcastEmail(payload: BroadcastEmailPayload): Promis
       .join("\n\n");
 
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || smtpUser,
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || "syndicate@apexkrishcapital.com",
       to: payload.to,
       subject: emailSubject,
       text: plainTextBody,
