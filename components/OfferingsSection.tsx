@@ -876,21 +876,6 @@ export default function OfferingsSection({
                     </Button>
                     <Button
                       size="sm"
-                      variant="outline"
-                      disabled={deletingOfferingId === currentOffering.offeringId}
-                      onClick={() => handleDeleteOffering(currentOffering)}
-                      className="h-8 px-2.5 rounded-lg text-xs font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 cursor-pointer inline-flex items-center gap-1.5 shrink-0"
-                      title="Permanently delete this active offering"
-                    >
-                      {deletingOfferingId === currentOffering.offeringId ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-3.5" />
-                      )}
-                      <span>Delete</span>
-                    </Button>
-                    <Button
-                      size="sm"
                       variant="destructive"
                       disabled={isClosingThis}
                       onClick={() => handleCloseOffering(currentOffering)}

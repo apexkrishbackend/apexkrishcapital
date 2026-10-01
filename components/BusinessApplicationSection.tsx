@@ -127,8 +127,8 @@ export default function BusinessApplicationSection() {
 
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
               <div className="space-y-3.5 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
-                  <Building2 className="size-3.5" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/40 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider shadow-xs">
+                  <Building2 className="size-3.5 text-blue-600 dark:text-blue-400" />
                   For Founders &amp; Companies
                 </div>
 

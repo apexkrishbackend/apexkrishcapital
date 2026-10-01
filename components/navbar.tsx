@@ -286,13 +286,13 @@ export default function Navbar() {
             type="button"
             onClick={handleOpenRequestAccess}
             className={cn(
-              "pointer-events-auto hidden md:inline-flex items-center gap-1.5 rounded-full font-semibold transition-all duration-300 active:scale-95 cursor-pointer shrink-0 shadow-[0_4px_16px_rgba(5,150,105,0.3)] hover:shadow-[0_6px_20px_rgba(5,150,105,0.45)] whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/30",
+              "pointer-events-auto hidden md:inline-flex items-center gap-1.5 rounded-full font-semibold transition-all duration-300 active:scale-95 cursor-pointer shrink-0 shadow-[0_4px_16px_rgba(37,99,235,0.3)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.45)] whitespace-nowrap bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/30",
               isScrolled
                 ? "py-2 px-4 text-[12.5px]"
                 : "py-2.5 px-5 text-[13px]"
             )}
           >
-            <Sparkles className="size-3.5 text-emerald-200 animate-pulse" />
+            <Sparkles className="size-3.5 text-blue-200 animate-pulse" />
             <span>Request Access</span>
           </button>
         </div>
@@ -348,9 +348,9 @@ export default function Navbar() {
             <button
               type="button"
               onClick={handleOpenRequestAccess}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
             >
-              <Sparkles className="size-3.5 text-emerald-200" />
+              <Sparkles className="size-3.5 text-blue-200" />
               <span>Request Allocation Access</span>
             </button>
 
