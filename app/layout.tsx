@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
-import AgentationProvider from "@/components/AgentationProvider";
 import ThemeProvider from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -158,7 +157,6 @@ export default function RootLayout({
             }}>
             <Navbar />
             {children}
-            <AgentationProvider />
           </ClerkProvider>
         </ThemeProvider>
       </body>
