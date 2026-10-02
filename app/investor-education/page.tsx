@@ -16,6 +16,7 @@ import {
   Building2,
   Briefcase,
   Repeat,
+  Percent,
 } from "lucide-react";
 
 export const metadata = {
@@ -31,6 +32,7 @@ const tocItems = [
   { id: "valuation-myth", title: "Myth: Share Price Tells You the Valuation" },
   { id: "spv", title: "What is an SPV?" },
   { id: "syndicate", title: "What is an Investment Syndicate?" },
+  { id: "carried-interest", title: "What is Carry or Carried Interest?" },
   { id: "liquidity-events", title: "What is a Liquidation Event?" },
   { id: "risks", title: "Key Risks of Private Investing" },
   { id: "diligence", title: "Our Due Diligence Approach" },
@@ -255,7 +257,61 @@ export default function InvestorEducationPage() {
             </p>
           </section>
 
-          {/* 8. What is a Liquidation Event? */}
+          {/* 8. What is Carry or Carried Interest? */}
+          <section id="carried-interest" className="scroll-mt-28 space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-border">
+              <Percent className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                What is Carry or Carried Interest?
+              </h2>
+            </div>
+            <p className="text-sm sm:text-base leading-relaxed text-muted-foreground">
+              Carried interest is a share of an investment fund&apos;s profits paid to the general partner or fund manager as performance-based compensation, usually set at 20%.
+            </p>
+            <p className="text-sm sm:text-base leading-relaxed font-medium text-foreground">
+              How It Works:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <Coins className="w-3.5 h-3.5" />
+                  <span>Profit Share</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  General partners (GPs) receive carry only after returning the original capital and a minimum preferred return (called a hurdle rate) to their investors or limited partners (LPs).
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5" />
+                  <span>Alignment</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  It aligns the financial interests of fund managers with the success of their investors.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-indigo-500 flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Common Use</span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  It is standard in private equity, venture capital, and hedge funds alongside a regular management fee (often 2%).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs sm:text-sm text-foreground leading-relaxed mt-2">
+              <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <span>
+                <strong>The ApexKrish Carry Structure:</strong> Unlike traditional private equity firms that charge 20%+ carry fees, ApexKrish Capital operates on a streamlined <strong>10% performance carry structure</strong> with minimal management fees.
+              </span>
+            </div>
+          </section>
+
+          {/* 9. What is a Liquidation Event? */}
           <section id="liquidity-events" className="scroll-mt-28 space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <Coins className="w-5 h-5 text-emerald-500" />
@@ -317,7 +373,7 @@ export default function InvestorEducationPage() {
             </div>
           </section>
 
-          {/* 9. Key Risks of Private Investing */}
+          {/* 10. Key Risks of Private Investing */}
           <section id="risks" className="scroll-mt-28 space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -359,7 +415,7 @@ export default function InvestorEducationPage() {
             </div>
           </section>
 
-          {/* 10. Our Due Diligence Approach */}
+          {/* 11. Our Due Diligence Approach */}
           <section id="diligence" className="scroll-mt-28 space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
