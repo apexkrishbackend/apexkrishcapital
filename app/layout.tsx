@@ -5,8 +5,42 @@ import Navbar from "@/components/navbar";
 import ThemeProvider from "@/components/theme-provider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import { dark, neobrutalism, shadcn } from "@clerk/ui/themes";
+import { neobrutalism } from "@clerk/ui/themes";
 import ScrollRestorationManager from "@/components/ScrollRestorationManager";
+
+const clerkCustomLocalization = {
+  signIn: {
+    start: {
+      title: "Continue to ApexKrish Capital",
+      titleCombined: "Continue to ApexKrish Capital",
+      subtitle: "to continue to ApexKrish Capital",
+      subtitleCombined: "to continue to ApexKrish Capital",
+      actionText: "Don’t have an account?",
+      actionLink: "Sign up",
+    },
+    password: {
+      title: "Continue to ApexKrish Capital",
+      subtitle: "to continue to ApexKrish Capital",
+    },
+    emailLink: {
+      subtitle: "to continue to ApexKrish Capital",
+    },
+    emailCode: {
+      subtitle: "to continue to ApexKrish Capital",
+    },
+    phoneCode: {
+      subtitle: "to continue to ApexKrish Capital",
+    },
+  },
+  signUp: {
+    start: {
+      title: "Create your account",
+      titleCombined: "Create your account",
+      subtitle: "to continue to ApexKrish Capital",
+      subtitleCombined: "to continue to ApexKrish Capital",
+    },
+  },
+};
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -152,6 +186,7 @@ export default function RootLayout({
         <ScrollRestorationManager />
         <ThemeProvider>
           <ClerkProvider
+            localization={clerkCustomLocalization}
             appearance={{
               theme: neobrutalism,
             }}>

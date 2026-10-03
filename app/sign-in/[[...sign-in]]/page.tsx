@@ -3,6 +3,40 @@ import { SignIn } from "@clerk/nextjs";
 import { neobrutalism } from "@clerk/ui/themes";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 
+const customLocalization = {
+  signIn: {
+    start: {
+      title: "Continue to ApexKrish Capital",
+      titleCombined: "Continue to ApexKrish Capital",
+      subtitle: "to continue to ApexKrish Capital",
+      subtitleCombined: "to continue to ApexKrish Capital",
+      actionText: "Don’t have an account?",
+      actionLink: "Sign up",
+    },
+    password: {
+      title: "Continue to ApexKrish Capital",
+      subtitle: "to continue to ApexKrish Capital",
+    },
+    emailLink: {
+      subtitle: "to continue to ApexKrish Capital",
+    },
+    emailCode: {
+      subtitle: "to continue to ApexKrish Capital",
+    },
+    phoneCode: {
+      subtitle: "to continue to ApexKrish Capital",
+    },
+  },
+  signUp: {
+    start: {
+      title: "Create your account",
+      titleCombined: "Create your account",
+      subtitle: "to continue to ApexKrish Capital",
+      subtitleCombined: "to continue to ApexKrish Capital",
+    },
+  },
+};
+
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background text-foreground pt-[110px] md:pt-[150px] pb-16 px-4 sm:px-6 lg:px-8">
@@ -44,40 +78,41 @@ export default function LoginPage() {
           <div className="flex justify-center lg:justify-end">
             <div className="rounded-[28px] border border-border bg-card text-card-foreground p-3 shadow-sm backdrop-blur-xl">
           <SignIn
-  appearance={{
-    theme: neobrutalism,
+            localization={customLocalization}
+            appearance={{
+              theme: neobrutalism,
 
-    elements: {
-      socialButtonsBlockButton: {
-        backgroundColor: "#6B6685",
-        color: "#FFFFFF",
+              elements: {
+                socialButtonsBlockButton: {
+                  backgroundColor: "#6B6685",
+                  color: "#FFFFFF",
 
-        "&:hover": {
-          backgroundColor: "#5F5A78",
-          color: "#FFFFFF",
-        },
+                  "&:hover": {
+                    backgroundColor: "#5F5A78",
+                    color: "#FFFFFF",
+                  },
 
-        "&:focus": {
-          backgroundColor: "#6B6685",
-          color: "#FFFFFF",
-        },
+                  "&:focus": {
+                    backgroundColor: "#6B6685",
+                    color: "#FFFFFF",
+                  },
 
-        "&:active": {
-          backgroundColor: "#55516C",
-          color: "#FFFFFF",
-        },
-      },
+                  "&:active": {
+                    backgroundColor: "#55516C",
+                    color: "#FFFFFF",
+                  },
+                },
 
-      socialButtonsBlockButtonText: {
-        color: "#FFFFFF",
+                socialButtonsBlockButtonText: {
+                  color: "#FFFFFF",
 
-        "&:hover": {
-          color: "#FFFFFF",
-        },
-      },
-    },
-  }}
-/>
+                  "&:hover": {
+                    color: "#FFFFFF",
+                  },
+                },
+              },
+            }}
+          />
             </div>
           </div>
         </div>
