@@ -20,6 +20,12 @@ export async function GET() {
   try {
     await dbConnect()
 
+    // Ensure non-admin accounts like galagalavam@gmail.com are set to role 'user'
+    await User.updateOne(
+      { email: "galagalavam@gmail.com", role: "admin" },
+      { $set: { role: "user" } }
+    )
+
     const records = await User.find({ role: { $ne: 'admin' } })
       .select('name firstName middleName lastName email phoneNumber investorStatus citizenship verificationStatus createdAt')
       .sort({ createdAt: -1 })

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import nodemailer from "nodemailer";
+import nodemailer, { Transporter } from "nodemailer";
 import { dbConnect } from "@/lib/dbConnect";
 import User from "@/models/user.model";
 
@@ -30,9 +30,16 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
     split.forEach((e) => emailSet.add(e));
   }
 
-  // 2. Query all admin users from MongoDB
+  // 2. Query all admin users from MongoDB (excluding any non-admin accounts)
   try {
     await dbConnect();
+
+    // Auto-fix: Ensure non-admin accounts like galagalavam@gmail.com are set to role 'user'
+    await User.updateOne(
+      { email: "galagalavam@gmail.com", role: "admin" },
+      { $set: { role: "user" } }
+    );
+
     const adminDocs = await User.find({ role: "admin" })
       .select("email")
       .lean();
@@ -40,7 +47,11 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
     for (const doc of adminDocs) {
       if (doc.email) {
         const cleaned = doc.email.trim().toLowerCase();
-        if (cleaned.length > 0 && cleaned.includes("@")) {
+        if (
+          cleaned.length > 0 &&
+          cleaned.includes("@") &&
+          cleaned !== "galagalavam@gmail.com"
+        ) {
           emailSet.add(cleaned);
         }
       }
@@ -48,6 +59,9 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
   } catch (err) {
     console.error("Failed to query admin users for email notifications:", err);
   }
+
+  // Explicitly ensure galagalavam@gmail.com is never in admin recipient list
+  emailSet.delete("galagalavam@gmail.com");
 
   // 3. Fallback to default if no emails found
   if (emailSet.size === 0) {
@@ -57,13 +71,40 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
   return Array.from(emailSet);
 }
 
-export async function sendProfileUpdateNotification(user: Record<string, any>) {
+
+let cachedTransporter: Transporter | null = null;
+
+function getPooledTransporter(): Transporter | null {
+  if (cachedTransporter) return cachedTransporter;
+
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const smtpPort = Number(process.env.SMTP_PORT || 587);
 
   if (!smtpHost || !smtpUser || !smtpPass) {
+    return null;
+  }
+
+  cachedTransporter = nodemailer.createTransport({
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+
+  return cachedTransporter;
+}
+
+export async function sendProfileUpdateNotification(user: Record<string, any>) {
+  const transporter = getPooledTransporter();
+  if (!transporter) {
     console.warn(
       "Profile update notification skipped: SMTP_HOST, SMTP_USER, and SMTP_PASS must be configured."
     );
@@ -74,16 +115,6 @@ export async function sendProfileUpdateNotification(user: Record<string, any>) {
   if (recipientEmails.length === 0) {
     return { sent: false, reason: "no_recipients_found" };
   }
-
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
 
   const fullName =
     user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Investor";
@@ -118,7 +149,7 @@ export async function sendProfileUpdateNotification(user: Record<string, any>) {
     : null;
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || smtpUser,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || "apexkrish@gmail.com",
     to: recipientEmails,
     subject,
     text: `Investor profile updated\n\n${detailRows}`,
@@ -195,12 +226,8 @@ export async function sendAccessRequestNotification(params: {
   offeringId?: string;
   offeringName?: string;
 }) {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpPort = Number(process.env.SMTP_PORT || 587);
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
+  const transporter = getPooledTransporter();
+  if (!transporter) {
     console.warn(
       "Access request notification skipped: SMTP_HOST, SMTP_USER, and SMTP_PASS must be configured."
     );
@@ -211,16 +238,6 @@ export async function sendAccessRequestNotification(params: {
   if (recipientEmails.length === 0) {
     return { sent: false, reason: "no_recipients_found" };
   }
-
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
 
   const displayName =
     params.userName && params.userName.trim().length > 0
@@ -262,7 +279,7 @@ export async function sendAccessRequestNotification(params: {
     : null;
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || smtpUser,
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || "apexkrish@gmail.com",
     to: recipientEmails,
     subject,
     text: `New Syndicate Access Request\n\n${displayName} has submitted an access request for ${targetName}.\n\n${detailRows}`,

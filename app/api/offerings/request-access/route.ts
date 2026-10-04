@@ -108,8 +108,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send email notification to all admins
-    const emailResult = await sendAccessRequestNotification({
+    // Dispatch email notification to all admins in the background without blocking the user response
+    sendAccessRequestNotification({
       userName: resolvedName || undefined,
       userEmail: resolvedEmail,
       userPhone: resolvedPhone || undefined,
@@ -118,12 +118,13 @@ export async function POST(req: NextRequest) {
       contactPreferences: resolvedContactPreferences,
       offeringId: offeringId || "general-access",
       offeringName: finalOfferingName,
+    }).catch((emailErr) => {
+      console.error("Background access request email error:", emailErr);
     });
 
     return NextResponse.json({
       success: true,
-      message: `Access request successfully sent to administrators.`,
-      emailResult,
+      message: `Access request successfully submitted.`,
     });
   } catch (error: any) {
     console.error("Failed to process access request:", error);

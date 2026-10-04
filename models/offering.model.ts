@@ -16,6 +16,7 @@ export interface IOffering {
   eligibility: string;
   eligibilitySub: string;
   closingDate: string;
+  thirdPartyUrl?: string;
   status: "active" | "closed";
   pastStatusText?: string;
   pastBadge?: string;
@@ -104,6 +105,11 @@ const offeringSchema = new Schema<IOfferingDocument>(
     closingDate: {
       type: String,
       default: "Oct 8, 2026",
+      trim: true,
+    },
+    thirdPartyUrl: {
+      type: String,
+      default: "",
       trim: true,
     },
     status: {

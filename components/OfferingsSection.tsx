@@ -28,6 +28,7 @@ import {
   Upload,
   X,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ export type ActiveOffering = {
   minCheckNum: number;
   eligibility: string;
   eligibilitySub?: string;
+  thirdPartyUrl?: string;
   status: "active" | "closed";
   pastStatusText?: string;
   pastBadge?: string;
@@ -249,9 +251,36 @@ export default function OfferingsSection({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [isCreatingOffering, setIsCreatingOffering] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingOffering, setEditingOffering] = useState<ActiveOffering | null>(null);
+  const [isSavingOffering, setIsSavingOffering] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [closingOfferingId, setClosingOfferingId] = useState<string | null>(null);
   const [deletingOfferingId, setDeletingOfferingId] = useState<string | null>(null);
   const [expressingInterestId, setExpressingInterestId] = useState<string | null>(null);
+
+  // Edit Offering Form State
+  const [editOfferingForm, setEditOfferingForm] = useState({
+    offeringId: "",
+    name: "",
+    badge: "Active SPV Allocation",
+    roundType: "Direct Equity SPV",
+    valuation: "",
+    valuationSub: "Pre-money round",
+    fundingGoal: "$150K",
+    goalSub: "Allocation cap",
+    minCheck: "$5K",
+    minCheckSub: "USD accredited entry",
+    minCheckNum: 5000,
+    closingDate: "",
+    description: "",
+    eligibility: "Accredited",
+    eligibilitySub: "SEC 506(c)",
+    thirdPartyUrl: "",
+    status: "active" as "active" | "closed",
+    pastStatusText: "Funded & Closed",
+    pastBadge: "Direct SPV",
+  });
 
   // Admin Broadcast State
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
@@ -285,6 +314,7 @@ export default function OfferingsSection({
     closingDate: "",
     description: "",
     eligibility: "Accredited",
+    thirdPartyUrl: "",
   });
 
   // Fetch live offerings from MongoDB
@@ -500,11 +530,82 @@ export default function OfferingsSection({
         closingDate: "",
         description: "",
         eligibility: "Accredited",
+        thirdPartyUrl: "",
       });
     } catch (err: any) {
       setCreateError(err.message || "Failed to create offering.");
     } finally {
       setIsCreatingOffering(false);
+    }
+  }
+
+  // Admin: Open Edit Offering Modal
+  function openEditModal(offering: ActiveOffering) {
+    setEditingOffering(offering);
+    setEditOfferingForm({
+      offeringId: offering.offeringId,
+      name: offering.name || "",
+      badge: offering.badge || "Active SPV Allocation",
+      roundType: offering.roundType || "Direct Equity SPV",
+      valuation: offering.valuation || "",
+      valuationSub: offering.valuationSub || "Pre-money round",
+      fundingGoal: offering.fundingGoal || "$150K",
+      goalSub: offering.goalSub || "Allocation cap",
+      minCheck: offering.minCheck || "$5K",
+      minCheckSub: offering.minCheckSub || "USD accredited entry",
+      minCheckNum: offering.minCheckNum || 5000,
+      closingDate: offering.closingDate || "",
+      description: offering.description || "",
+      eligibility: offering.eligibility || "Accredited",
+      eligibilitySub: offering.eligibilitySub || "SEC 506(c)",
+      thirdPartyUrl: offering.thirdPartyUrl || "",
+      status: offering.status || "active",
+      pastStatusText: offering.pastStatusText || "Funded & Closed",
+      pastBadge: offering.pastBadge || offering.roundType || "Direct SPV",
+    });
+    setEditError(null);
+    setEditModalOpen(true);
+  }
+
+  // Admin: Save Edited Offering Details
+  async function handleEditOfferingSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setEditError(null);
+
+    if (
+      !editOfferingForm.name.trim() ||
+      !editOfferingForm.valuation.trim() ||
+      !editOfferingForm.description.trim()
+    ) {
+      setEditError("Please provide company name, valuation, and summary description.");
+      return;
+    }
+
+    setIsSavingOffering(true);
+
+    try {
+      const res = await fetch("/api/admin/offerings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editOfferingForm),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update offering.");
+      }
+
+      setEditModalOpen(false);
+      setSuccessMessage(`Offering '${editOfferingForm.name}' updated successfully.`);
+      setTimeout(() => setSuccessMessage(null), 6000);
+
+      // Reload live offerings from MongoDB
+      await loadOfferings();
+    } catch (err: any) {
+      setEditError(err.message || "Failed to update offering.");
+    } finally {
+      setIsSavingOffering(false);
     }
   }
 
@@ -867,6 +968,16 @@ export default function OfferingsSection({
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => openEditModal(currentOffering)}
+                      className="h-8 px-3 rounded-lg text-xs font-bold text-foreground hover:bg-background border-border cursor-pointer inline-flex items-center gap-1.5 shrink-0 shadow-2xs"
+                      title="Edit offering details and parameters"
+                    >
+                      <Pencil className="size-3.5" />
+                      <span>Edit Offering</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => openBroadcastModal(currentOffering)}
                       className="h-8 px-3 rounded-lg text-xs font-bold text-primary hover:text-primary hover:bg-primary/10 border-primary/30 cursor-pointer inline-flex items-center gap-1.5 shrink-0 shadow-2xs"
                       title="Broadcast email update & documents to verified investors"
@@ -886,7 +997,7 @@ export default function OfferingsSection({
                       ) : (
                         <Archive className="size-3.5" />
                       )}
-                      <span>Close Deal & Move to Past Offerings</span>
+                      <span>Close Deal</span>
                     </Button>
                   </div>
                 </div>
@@ -1103,8 +1214,21 @@ export default function OfferingsSection({
 
                       {/* Action Buttons for Verified User */}
                       <div className="flex flex-col gap-2.5 w-full">
+                        {currentOffering.thirdPartyUrl && (
+                          <a
+                            href={currentOffering.thirdPartyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full h-11 px-4 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs inline-flex items-center justify-center gap-2 transition"
+                          >
+                            <span>Proceed to SPV Platform</span>
+                            <ExternalLink className="size-3.5" />
+                          </a>
+                        )}
+
                         <Button
                           onClick={() => openCommitModal(currentOffering)}
+                          variant={currentOffering.thirdPartyUrl ? "outline" : "default"}
                           className="w-full h-11 px-4 rounded-full text-xs font-bold uppercase tracking-wider shadow-xs inline-flex items-center justify-center gap-2"
                         >
                           <DollarSign className="size-4" />
@@ -1189,27 +1313,39 @@ export default function OfferingsSection({
                     </div>
                   </div>
 
-                  {/* Admin Delete Action for Past Offering */}
+                  {/* Admin Actions for Past Offering */}
                   {isAdmin && (
                     <div className="pt-3 border-t border-border/80 flex items-center justify-between gap-2">
                       <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                         <ShieldAlert className="size-3.5 text-amber-500 shrink-0" />
-                        Admin Action
+                        Admin
                       </span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={deletingOfferingId === offering.offeringId}
-                        onClick={() => handleDeleteOffering(offering)}
-                        className="h-8 px-2.5 rounded-lg text-xs font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
-                      >
-                        {deletingOfferingId === offering.offeringId ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-3.5" />
-                        )}
-                        <span>Delete Offering</span>
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditModal(offering)}
+                          className="h-8 px-2.5 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center gap-1 text-foreground hover:bg-background border-border"
+                          title="Edit past offering parameters"
+                        >
+                          <Pencil className="size-3" />
+                          <span>Edit</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={deletingOfferingId === offering.offeringId}
+                          onClick={() => handleDeleteOffering(offering)}
+                          className="h-8 px-2.5 rounded-lg text-xs font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer inline-flex items-center gap-1.5 transition-colors"
+                        >
+                          {deletingOfferingId === offering.offeringId ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                          <span>Delete</span>
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1508,6 +1644,22 @@ export default function OfferingsSection({
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center justify-between">
+                  <span>Third-Party Application / SPV Portal URL (Optional)</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Carta, Assure, AngelList, etc.</span>
+                </label>
+                <input
+                  type="url"
+                  value={newOfferingForm.thirdPartyUrl}
+                  onChange={(e) =>
+                    setNewOfferingForm((prev) => ({ ...prev, thirdPartyUrl: e.target.value }))
+                  }
+                  placeholder="https://app.carta.com/spvs/... or https://assure.co/..."
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
                   Summary Description *
                 </label>
@@ -1544,6 +1696,246 @@ export default function OfferingsSection({
                     </>
                   ) : (
                     "Publish Offering"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN: EDIT OFFERING MODAL */}
+      {editModalOpen && editingOffering && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl border border-border bg-card text-card-foreground p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+            <div className="flex items-start justify-between gap-4 pb-3.5 border-b border-border">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <ShieldAlert className="size-3" />
+                  <span>Admin Syndicate Desk · Edit Offering</span>
+                </div>
+                <h3 className="text-xl font-bold text-foreground">
+                  Edit Details: {editingOffering.name}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Update live terms, third-party portal link, valuation, or status.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted cursor-pointer transition"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEditOfferingSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Offering Status *
+                  </label>
+                  <select
+                    value={editOfferingForm.status}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({
+                        ...prev,
+                        status: e.target.value as "active" | "closed",
+                      }))
+                    }
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="active">Active Allocation (Live Carousel)</option>
+                    <option value="closed">Closed / Distributed (Past Offerings)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Identifier (Slug)
+                  </label>
+                  <input
+                    disabled
+                    value={editOfferingForm.offeringId}
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-muted text-sm font-mono text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Company Name *
+                  </label>
+                  <input
+                    required
+                    value={editOfferingForm.name}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="e.g. Micro1 Inc."
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Pre-Money Valuation *
+                  </label>
+                  <input
+                    required
+                    value={editOfferingForm.valuation}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({ ...prev, valuation: e.target.value }))
+                    }
+                    placeholder="e.g. $40B, <$4B, $2.5B"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Allocation Cap / Goal
+                  </label>
+                  <input
+                    value={editOfferingForm.fundingGoal}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({ ...prev, fundingGoal: e.target.value }))
+                    }
+                    placeholder="e.g. $250K, $500K"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Min Check (USD)
+                  </label>
+                  <input
+                    type="number"
+                    value={editOfferingForm.minCheckNum}
+                    onChange={(e) => {
+                      const num = Number(e.target.value) || 5000;
+                      setEditOfferingForm((prev) => ({
+                        ...prev,
+                        minCheckNum: num,
+                        minCheck: `$${num >= 1000 ? num / 1000 + "K" : num}`,
+                      }));
+                    }}
+                    placeholder="5000"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary tabular-nums"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Deadline / Closing Date
+                  </label>
+                  <input
+                    value={editOfferingForm.closingDate}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({ ...prev, closingDate: e.target.value }))
+                    }
+                    placeholder="e.g. Nov 15, 2026"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Round Type / Series
+                  </label>
+                  <input
+                    value={editOfferingForm.roundType}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({ ...prev, roundType: e.target.value }))
+                    }
+                    placeholder="e.g. Series D Direct SPV"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                    Offering Badge
+                  </label>
+                  <input
+                    value={editOfferingForm.badge}
+                    onChange={(e) =>
+                      setEditOfferingForm((prev) => ({ ...prev, badge: e.target.value }))
+                    }
+                    placeholder="e.g. Growth SPV Allocation"
+                    className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center justify-between">
+                  <span>Third-Party Application / SPV Portal URL (Optional)</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Carta, Assure, AngelList, etc.</span>
+                </label>
+                <input
+                  type="url"
+                  value={editOfferingForm.thirdPartyUrl}
+                  onChange={(e) =>
+                    setEditOfferingForm((prev) => ({ ...prev, thirdPartyUrl: e.target.value }))
+                  }
+                  placeholder="https://app.carta.com/spvs/... or https://assure.co/..."
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  Summary Description *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={editOfferingForm.description}
+                  onChange={(e) =>
+                    setEditOfferingForm((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  placeholder="Provide a concise 1-2 sentence description of the company's core technology and market value proposition."
+                  className="w-full p-3 rounded-xl border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditModalOpen(false)}
+                  className="rounded-xl text-xs uppercase tracking-wider"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSavingOffering}
+                  className="rounded-xl text-xs font-semibold uppercase tracking-wider shadow-xs"
+                >
+                  {isSavingOffering ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
                   )}
                 </Button>
               </div>

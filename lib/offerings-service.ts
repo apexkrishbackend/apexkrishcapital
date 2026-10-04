@@ -1,5 +1,6 @@
 import { dbConnect } from "@/lib/dbConnect";
 import Offering, { IOffering } from "@/models/offering.model";
+import DealLink from "@/models/deal-link.model";
 
 export const DEFAULT_SEED_OFFERINGS: Partial<IOffering>[] = [
   {
@@ -193,6 +194,19 @@ export async function getLiveOfferings() {
     .sort({ displayOrder: 1, createdAt: -1 })
     .lean();
 
+  let dealLinks: any[] = [];
+  try {
+    dealLinks = await DealLink.find({}).lean();
+  } catch {
+    // ignore
+  }
+  const dealLinkMap = new Map<string, string>();
+  for (const dl of dealLinks) {
+    if (dl.offeringId && dl.thirdPartyUrl) {
+      dealLinkMap.set(dl.offeringId.toLowerCase().trim(), dl.thirdPartyUrl);
+    }
+  }
+
   // Deduplicate by both offeringId and normalized company name
   const seenIds = new Set<string>();
   const seenNames = new Set<string>();
@@ -205,7 +219,14 @@ export async function getLiveOfferings() {
     if (normId && normName && !seenIds.has(normId) && !seenNames.has(normName)) {
       seenIds.add(normId);
       seenNames.add(normName);
-      uniqueOfferings.push(off);
+      const thirdPartyUrl =
+        off.thirdPartyUrl ||
+        dealLinkMap.get(off.offeringId?.toLowerCase().trim()) ||
+        "";
+      uniqueOfferings.push({
+        ...off,
+        thirdPartyUrl,
+      });
     }
   }
 

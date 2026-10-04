@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import Offering from "@/models/offering.model";
+import DealLink from "@/models/deal-link.model";
 import Commitment from "@/models/commitment.model";
 import { logAdminAction } from "@/lib/audit-logger";
 import { getClientIp } from "@/lib/rate-limit";
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
       eligibility,
       eligibilitySub,
       closingDate,
+      thirdPartyUrl,
     } = body;
 
     if (!name || !description || !valuation) {
@@ -80,11 +82,27 @@ export async function POST(req: NextRequest) {
       eligibility: eligibility?.trim() || "Accredited",
       eligibilitySub: eligibilitySub?.trim() || "SEC 506(c)",
       closingDate: closingDate?.trim() || "Open",
+      thirdPartyUrl: thirdPartyUrl?.trim() || "",
       status: "active",
       pastStatusText: "Funded & Closed",
       pastBadge: roundType?.trim() || "Direct SPV",
       displayOrder: 0,
     });
+
+    if (thirdPartyUrl?.trim()) {
+      try {
+        await DealLink.findOneAndUpdate(
+          { offeringId: safeOfferingId },
+          {
+            thirdPartyUrl: thirdPartyUrl.trim(),
+            updatedBy: userId,
+          },
+          { upsert: true, new: true }
+        );
+      } catch (linkErr) {
+        console.warn("Failed to sync deal link:", linkErr);
+      }
+    }
 
     const adminEmail =
       clerkUser?.primaryEmailAddress?.emailAddress ||
@@ -103,6 +121,7 @@ export async function POST(req: NextRequest) {
         offeringName: newOffering.name,
         valuation: newOffering.valuation,
         fundingGoal: newOffering.fundingGoal,
+        thirdPartyUrl: newOffering.thirdPartyUrl,
       },
     });
 
@@ -134,7 +153,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { offeringId, status, pastStatusText, closingDate, ...otherUpdates } = body;
+    const { offeringId, status, pastStatusText, closingDate, thirdPartyUrl, ...otherUpdates } = body;
 
     if (!offeringId) {
       return NextResponse.json({ error: "Offering ID is required." }, { status: 400 });
@@ -147,6 +166,7 @@ export async function PATCH(req: NextRequest) {
     if (status) updatePayload.status = status;
     if (pastStatusText) updatePayload.pastStatusText = pastStatusText;
     if (closingDate) updatePayload.closingDate = closingDate;
+    if (thirdPartyUrl !== undefined) updatePayload.thirdPartyUrl = thirdPartyUrl.trim();
 
     // If closing offering, record the close date and month/year
     if (status === "closed") {
@@ -170,6 +190,21 @@ export async function PATCH(req: NextRequest) {
 
     if (!updatedOffering) {
       return NextResponse.json({ error: "Offering not found." }, { status: 404 });
+    }
+
+    if (thirdPartyUrl !== undefined && thirdPartyUrl.trim()) {
+      try {
+        await DealLink.findOneAndUpdate(
+          { offeringId },
+          {
+            thirdPartyUrl: thirdPartyUrl.trim(),
+            updatedBy: userId,
+          },
+          { upsert: true, new: true }
+        );
+      } catch (linkErr) {
+        console.warn("Failed to update deal link:", linkErr);
+      }
     }
 
     const adminEmail =
@@ -276,6 +311,14 @@ export async function DELETE(req: NextRequest) {
         ...deletedDocs.map((d: any) => ({ offeringTitle: new RegExp(`^${d.name}$`, "i") })),
       ],
     });
+
+    try {
+      await DealLink.deleteMany({
+        offeringId: { $in: allMatchingOfferingIds },
+      });
+    } catch (linkErr) {
+      console.warn("Failed to delete associated deal links:", linkErr);
+    }
 
     const deletedName = deletedDocs[0]?.name || rawId;
 
