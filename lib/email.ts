@@ -189,9 +189,11 @@ export async function sendAccessRequestNotification(params: {
   userName?: string;
   userEmail: string;
   userPhone?: string;
+  citizenship?: string;
   investorStatus?: string;
-  offeringId: string;
-  offeringName: string;
+  contactPreferences?: string[] | string;
+  offeringId?: string;
+  offeringName?: string;
 }) {
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
@@ -225,15 +227,24 @@ export async function sendAccessRequestNotification(params: {
       ? params.userName.trim()
       : params.userEmail;
 
-  const subject = `Allocation Access Request: ${displayName} requested access to ${params.offeringName}`;
+  const targetName = params.offeringName && params.offeringName !== "Apex Krish Capital Deal Room"
+    ? params.offeringName
+    : "Apex Krish Capital Deal Room";
+
+  const subject = `New Access Request: ${displayName} requested access to ${targetName}`;
+
+  const formattedPrefs = Array.isArray(params.contactPreferences)
+    ? params.contactPreferences.join(", ")
+    : params.contactPreferences || "Email";
 
   const requestDetails = {
     "Investor Name": params.userName || "N/A",
     "Investor Email": params.userEmail,
     "Phone Number": params.userPhone || "N/A",
-    "Investor Status": params.investorStatus || "N/A",
-    "Requested Allocation": params.offeringName,
-    "Offering ID": params.offeringId,
+    "Citizenship": params.citizenship || "United States",
+    "Investor Status": params.investorStatus || "Accredited Investor",
+    "Contact Preference": formattedPrefs,
+    "Requested Access": targetName,
     "Requested At": new Date().toLocaleString("en-US", { timeZoneName: "short" }),
   };
 
@@ -254,7 +265,7 @@ export async function sendAccessRequestNotification(params: {
     from: process.env.SMTP_FROM || smtpUser,
     to: recipientEmails,
     subject,
-    text: `New Allocation Access Request\n\n${displayName} has requested access to ${params.offeringName}.\n\n${detailRows}`,
+    text: `New Syndicate Access Request\n\n${displayName} has submitted an access request for ${targetName}.\n\n${detailRows}`,
     html: `
       <div style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#1a1a1a;">
         <div style="max-width:700px; margin:0 auto; background:#ffffff; border:1px solid #e7e7e7; border-radius:12px; overflow:hidden;">
@@ -274,15 +285,15 @@ export async function sendAccessRequestNotification(params: {
 
           <div style="padding:32px; background:#ffffff;">
             <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:#059669; font-weight:bold; margin-bottom:12px;">
-              New Allocation Access Request
+              New Syndicate Access Request
             </div>
 
-            <h2 style="margin:0 0 12px; font-size:26px; line-height:1.3; color:#111827; font-weight:700;">
-              Access Request: ${params.offeringName}
+            <h2 style="margin:0 0 12px; font-size:24px; line-height:1.3; color:#111827; font-weight:700;">
+              Access Request: ${targetName}
             </h2>
 
             <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#3f3f46;">
-              <strong>${displayName}</strong> (<a href="mailto:${params.userEmail}" style="color:#2563eb; text-decoration:underline;">${params.userEmail}</a>) has requested access to the active allocation for <strong>${params.offeringName}</strong>.
+              <strong>${displayName}</strong> (<a href="mailto:${params.userEmail}" style="color:#2563eb; text-decoration:underline;">${params.userEmail}</a>) has submitted a request to access private allocations and syndicate deal rooms.
             </p>
 
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; background:#fafafa; border:1px solid #ececec; border-radius:10px; overflow:hidden;">
@@ -305,7 +316,7 @@ export async function sendAccessRequestNotification(params: {
             </table>
 
             <p style="margin:24px 0 0; font-size:12px; line-height:1.7; color:#6b7280;">
-              This notification was generated automatically by the Apex Krish Capital investment portal upon receiving an access request.
+              This notification was generated automatically by the Apex Krish Capital syndicate portal upon receiving a new accredited investor access request.
             </p>
           </div>
         </div>
@@ -316,3 +327,4 @@ export async function sendAccessRequestNotification(params: {
 
   return { sent: true, to: recipientEmails };
 }
+

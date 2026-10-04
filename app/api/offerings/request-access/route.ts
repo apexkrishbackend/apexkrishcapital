@@ -10,14 +10,20 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { offeringId, offeringName, userEmail, userName, userPhone } = body;
-
-    if (!offeringName && !offeringId) {
-      return NextResponse.json(
-        { error: "Offering identifier or name is required." },
-        { status: 400 }
-      );
-    }
+    const {
+      offeringId,
+      offeringName,
+      userEmail,
+      email,
+      userName,
+      name,
+      fullName,
+      userPhone,
+      phone,
+      citizenship,
+      investorStatus,
+      contactPreferences,
+    } = body;
 
     // Try resolving authenticated Clerk user
     let clerkUser: any = null;
@@ -27,22 +33,24 @@ export async function POST(req: NextRequest) {
       // Not authenticated or Clerk request outside auth context
     }
 
-    let resolvedEmail = userEmail?.trim()?.toLowerCase();
-    let resolvedName = userName?.trim();
-    let resolvedPhone = userPhone?.trim();
-    let investorStatus = "Accredited (Investor Portal)";
+    let resolvedEmail = (userEmail || email)?.trim()?.toLowerCase();
+    let resolvedName = (fullName || userName || name)?.trim();
+    let resolvedPhone = (userPhone || phone)?.trim();
+    let resolvedCitizenship = citizenship?.trim() || "United States";
+    let resolvedInvestorStatus = investorStatus?.trim() || "Accredited Investor";
+    let resolvedContactPreferences = contactPreferences || ["Email"];
 
     if (clerkUser) {
       const primaryEmail = clerkUser.emailAddresses?.find(
         (e: any) => e.id === clerkUser.primaryEmailAddressId
       )?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress;
 
-      if (primaryEmail) {
+      if (primaryEmail && !resolvedEmail) {
         resolvedEmail = primaryEmail.toLowerCase();
       }
 
       const clerkFullName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
-      if (clerkFullName) {
+      if (clerkFullName && !resolvedName) {
         resolvedName = clerkFullName;
       }
 
@@ -63,8 +71,8 @@ export async function POST(req: NextRequest) {
           if (!resolvedPhone && dbUser.phoneNumber) {
             resolvedPhone = dbUser.phoneNumber;
           }
-          if (dbUser.investorStatus) {
-            investorStatus = dbUser.investorStatus;
+          if (dbUser.investorStatus && !investorStatus) {
+            resolvedInvestorStatus = dbUser.investorStatus;
           }
         }
       } catch (dbErr) {
@@ -72,16 +80,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!resolvedEmail) {
+    if (!resolvedEmail || !resolvedEmail.includes("@")) {
       return NextResponse.json(
-        { error: "An email address is required to submit an access request." },
+        { error: "A valid email address is required to submit an access request." },
         { status: 400 }
       );
     }
 
-    // Fetch offering display name if not passed
-    let finalOfferingName = offeringName;
-    if (!finalOfferingName && offeringId) {
+    if (!resolvedName) {
+      return NextResponse.json(
+        { error: "Full name is required to submit an access request." },
+        { status: 400 }
+      );
+    }
+
+    // Fetch offering display name if passed
+    let finalOfferingName = offeringName || "Apex Krish Capital Deal Room";
+    if (offeringId && offeringId !== "general-access" && (!offeringName || offeringName === "Active Allocation")) {
       try {
         await dbConnect();
         const offDoc = await Offering.findOne({ offeringId }).lean();
@@ -98,14 +113,16 @@ export async function POST(req: NextRequest) {
       userName: resolvedName || undefined,
       userEmail: resolvedEmail,
       userPhone: resolvedPhone || undefined,
-      investorStatus,
-      offeringId: offeringId || "active-allocation",
-      offeringName: finalOfferingName || "Active Allocation",
+      citizenship: resolvedCitizenship,
+      investorStatus: resolvedInvestorStatus,
+      contactPreferences: resolvedContactPreferences,
+      offeringId: offeringId || "general-access",
+      offeringName: finalOfferingName,
     });
 
     return NextResponse.json({
       success: true,
-      message: `Access request for ${finalOfferingName} sent to administrators.`,
+      message: `Access request successfully sent to administrators.`,
       emailResult,
     });
   } catch (error: any) {
@@ -116,3 +133,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

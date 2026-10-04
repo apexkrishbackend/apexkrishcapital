@@ -1012,11 +1012,26 @@ export default function OfferingsSection({
                   {!isSignedIn ? (
                     <div className="space-y-4 pt-1">
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        To express interest or commit capital to {currentOffering.name}, sign in with your accredited investor account.
+                        To express interest or commit capital to {currentOffering.name}, sign in with your accredited account or request syndicate access.
                       </p>
-                      <div>
+                      <div className="flex flex-col gap-2.5">
                         <Button asChild className="w-full h-11 rounded-full font-bold text-sm tracking-wide shadow-xs">
                           <Link href="/sign-in">Log in to participate</Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            window.dispatchEvent(
+                              new CustomEvent("open-expandable-screen", {
+                                detail: { layoutId: "request-access-portal" },
+                              })
+                            );
+                          }}
+                          className="w-full h-11 rounded-full font-bold text-sm tracking-wide border-border hover:bg-muted cursor-pointer"
+                        >
+                          <Sparkles className="size-4 text-blue-500 mr-2" />
+                          <span>Request Access</span>
                         </Button>
                       </div>
                     </div>
