@@ -3,6 +3,7 @@ import { dbConnect } from "@/lib/dbConnect";
 import CompanyApplication from "@/models/company-application.model";
 import { companyApplicationSchema } from "@/lib/validations/schemas";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { sendCompanyApplicationNotification } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,6 +62,13 @@ export async function POST(req: NextRequest) {
       summary,
       status: "pending_review",
     });
+
+    // Send email notification to admins
+    try {
+      await sendCompanyApplicationNotification(application);
+    } catch (emailErr) {
+      console.error("Failed to send company application email:", emailErr);
+    }
 
     return NextResponse.json({
       success: true,

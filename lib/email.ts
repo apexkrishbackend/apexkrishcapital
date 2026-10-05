@@ -37,6 +37,7 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
     // Auto-fix: Ensure non-admin accounts like galagalavam@gmail.com are set to role 'user'
     await User.updateOne(
       { email: "galagalavam@gmail.com", role: "admin" },
+
       { $set: { role: "user" } }
     );
 
@@ -49,8 +50,7 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
         const cleaned = doc.email.trim().toLowerCase();
         if (
           cleaned.length > 0 &&
-          cleaned.includes("@") &&
-          cleaned !== "galagalavam@gmail.com"
+          cleaned.includes("@")
         ) {
           emailSet.add(cleaned);
         }
@@ -61,7 +61,6 @@ export async function getAdminNotificationEmails(): Promise<string[]> {
   }
 
   // Explicitly ensure galagalavam@gmail.com is never in admin recipient list
-  emailSet.delete("galagalavam@gmail.com");
 
   // 3. Fallback to default if no emails found
   if (emailSet.size === 0) {
@@ -279,7 +278,7 @@ export async function sendAccessRequestNotification(params: {
     : null;
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER || "apexkrish@gmail.com",
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: recipientEmails,
     subject,
     text: `New Syndicate Access Request\n\n${displayName} has submitted an access request for ${targetName}.\n\n${detailRows}`,
@@ -345,3 +344,158 @@ export async function sendAccessRequestNotification(params: {
   return { sent: true, to: recipientEmails };
 }
 
+export async function sendCompanyApplicationNotification(
+  application: Record<string, any>
+) {
+  const transporter = getPooledTransporter();
+
+  if (!transporter) {
+    console.warn(
+      "Company application notification skipped: SMTP_HOST, SMTP_USER, and SMTP_PASS must be configured."
+    );
+
+    return {
+      sent: false,
+      reason: "missing_smtp_configuration",
+    };
+  }
+
+  const recipientEmails = await getAdminNotificationEmails();
+
+  if (recipientEmails.length === 0) {
+    return {
+      sent: false,
+      reason: "no_recipients_found",
+    };
+  }
+
+  const subject = `New Company Application: ${application.companyName} - ${
+    application.sector || "Unknown Sector"
+  }`;
+
+  const applicationDetails = {
+    "Company Name": application.companyName || "N/A",
+    "Founder Name": application.founderName || "N/A",
+    "Work Email": application.workEmail || "N/A",
+    "Phone Number": application.phoneNumber || "N/A",
+    Website: application.websiteUrl || "N/A",
+    "Pitch Deck": application.pitchDeckUrl || "N/A",
+    Stage: application.stage || "N/A",
+    "Target Raise": application.targetRaiseAmount || "N/A",
+    "Current ARR": application.currentArr || "N/A",
+    Sector: application.sector || "N/A",
+    Summary: application.summary || "N/A",
+    "Submitted At": new Date().toLocaleString("en-US", {
+      timeZoneName: "short",
+    }),
+  };
+
+  const detailRows = Object.entries(applicationDetails)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join("\n");
+
+  const logoPath = path.join(
+    process.cwd(),
+    "public",
+    "apexkrishnalogo.png"
+  );
+
+  const logoAttachment = fs.existsSync(logoPath)
+    ? {
+        filename: "apexkrishnalogo.png",
+        path: logoPath,
+        cid: "apexKrishLogo",
+      }
+    : null;
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: recipientEmails,
+    subject,
+
+    text: `New Company Application Submitted
+
+${application.founderName} has submitted an application for ${application.companyName}.
+
+${detailRows}`,
+
+    html: `
+      <div style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, Helvetica, sans-serif; color:#1a1a1a;">
+        <div style="max-width:700px; margin:0 auto; background:#ffffff; border:1px solid #e7e7e7; border-radius:12px; overflow:hidden;">
+
+          <div style="padding:24px 32px 16px; border-bottom:1px solid #ececec; background:#ffffff;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="left" valign="middle" style="padding:0;">
+                  ${
+                    logoAttachment
+                      ? `<img src="cid:apexKrishLogo" alt="Apex Krish Capital" width="180" style="display:block; max-width:180px; height:auto; border:0;" />`
+                      : ""
+                  }
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="padding:32px; background:#ffffff;">
+
+            <div style="font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:#0284c7; font-weight:bold; margin-bottom:12px;">
+              New Company Application
+            </div>
+
+            <h2 style="margin:0 0 12px; font-size:24px; line-height:1.3; color:#111827; font-weight:700;">
+              Funding Application: ${application.companyName}
+            </h2>
+
+            <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#3f3f46;">
+              <strong>${application.founderName}</strong>
+              (<a href="mailto:${application.workEmail}" style="color:#2563eb; text-decoration:underline;">
+                ${application.workEmail}
+              </a>)
+              has submitted a new funding application.
+            </p>
+
+            <table
+              role="presentation"
+              cellpadding="0"
+              cellspacing="0"
+              border="0"
+              width="100%"
+              style="border-collapse:collapse; background:#fafafa; border:1px solid #ececec; border-radius:10px; overflow:hidden;"
+            >
+              <tbody>
+                ${Object.entries(applicationDetails)
+                  .map(([label, value]) => {
+                    return `
+                      <tr>
+                        <td style="padding:12px 16px; border-bottom:1px solid #ececec; font-size:13px; color:#52525b; width:180px; font-weight:600; background:#f8fafc;">
+                          ${label}
+                        </td>
+
+                        <td style="padding:12px 16px; border-bottom:1px solid #ececec; font-size:13px; color:#1f2937; line-height:1.5;">
+                          ${value}
+                        </td>
+                      </tr>
+                    `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+
+            <p style="margin:24px 0 0; font-size:12px; line-height:1.7; color:#6b7280;">
+              This notification was generated automatically by the Apex Krish Capital system upon receiving a new company funding application.
+            </p>
+
+          </div>
+        </div>
+      </div>
+    `,
+
+    attachments: logoAttachment ? [logoAttachment] : undefined,
+  });
+
+  return {
+    sent: true,
+    to: recipientEmails,
+  };
+}

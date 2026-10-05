@@ -7,6 +7,7 @@ import Commitment from "@/models/commitment.model";
 import { logAdminAction } from "@/lib/audit-logger";
 import { getClientIp } from "@/lib/rate-limit";
 import { ensureOfferingsSeeded } from "@/lib/offerings-service";
+import User from "@/models/user.model";
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
           { offeringId: safeOfferingId },
           {
             thirdPartyUrl: thirdPartyUrl.trim(),
-            updatedBy: userId,
+            updatedBy: (await User.findOne({ email: clerkUser?.emailAddresses?.[0]?.emailAddress }))?._id, // Find userId through mail
           },
           { upsert: true, new: true }
         );
@@ -198,7 +199,8 @@ export async function PATCH(req: NextRequest) {
           { offeringId },
           {
             thirdPartyUrl: thirdPartyUrl.trim(),
-            updatedBy: userId,
+            updatedBy: (await User.findOne({ email: clerkUser?.emailAddresses?.[0]?.emailAddress }))?._id, // Find userId through mail
+
           },
           { upsert: true, new: true }
         );
@@ -263,7 +265,7 @@ export async function DELETE(req: NextRequest) {
       try {
         const body = await req.json();
         offeringId = body.offeringId;
-      } catch {}
+      } catch { }
     }
 
     if (!offeringId) {
