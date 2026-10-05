@@ -138,26 +138,7 @@ const FALLBACK_ACTIVE_OFFERINGS: ActiveOffering[] = [
     eligibility: "Accredited",
     eligibilitySub: "SEC 506(c)",
     status: "active",
-  },
-  {
-    offeringId: "cursor-anysphere",
-    name: "Cursor (Anysphere)",
-    badge: "Series A/B SPV Allocation",
-    roundType: "Growth SPV Series",
-    description:
-      "Cursor (Anysphere) is the AI-first code editor and development environment transforming software creation with autonomous developer agent infrastructure.",
-    closingDate: "Oct 15, 2026",
-    valuation: "$2.5B",
-    valuationSub: "Series A/B round",
-    fundingGoal: "$150K",
-    goalSub: "Allocation cap",
-    minCheck: "$5K",
-    minCheckSub: "USD accredited entry",
-    minCheckNum: 5000,
-    eligibility: "Accredited",
-    eligibilitySub: "SEC 506(c)",
-    status: "active",
-  },
+  }
 ];
 
 const FALLBACK_PAST_OFFERINGS: ActiveOffering[] = [
@@ -178,43 +159,7 @@ const FALLBACK_PAST_OFFERINGS: ActiveOffering[] = [
     status: "closed",
     pastStatusText: "Distributed",
     pastBadge: "Series F SPV",
-  },
-  {
-    offeringId: "xai",
-    name: "xAI",
-    badge: "Series B SPV",
-    roundType: "Series B SPV",
-    description: "Frontier artificial intelligence research, Grok models, and supercomputing clusters.",
-    closingDate: "Dec 2024",
-    closedMonthYear: "Dec 2024",
-    valuation: "$24.0B",
-    valuationSub: "Series B round",
-    fundingGoal: "$500K",
-    minCheck: "$25K",
-    minCheckNum: 25000,
-    eligibility: "Accredited",
-    status: "closed",
-    pastStatusText: "Distributed",
-    pastBadge: "Series B SPV",
-  },
-  {
-    offeringId: "neuralink",
-    name: "Neuralink",
-    badge: "Direct SPV",
-    roundType: "Direct SPV",
-    description: "Brain-computer interface (BCI) technology restoring autonomy and neural function.",
-    closingDate: "Nov 2024",
-    closedMonthYear: "Nov 2024",
-    valuation: "$7.0B",
-    valuationSub: "Direct SPV round",
-    fundingGoal: "$200K",
-    minCheck: "$10K",
-    minCheckNum: 10000,
-    eligibility: "Accredited",
-    status: "closed",
-    pastStatusText: "Distributed",
-    pastBadge: "Direct SPV",
-  },
+  }
 ];
 
 type OfferingsSectionProps = {
