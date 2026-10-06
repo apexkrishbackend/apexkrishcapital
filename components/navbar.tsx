@@ -180,9 +180,9 @@ export default function Navbar() {
                 <div
                   className={cn(
                     "absolute top-1 bottom-1 rounded-full bg-white dark:bg-white/[0.16] shadow-[0_2px_8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                    activePersona === "investors" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/aboutus"
+                    activePersona === "investors" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/about"
                       ? "left-1 w-[105px] opacity-100"
-                      : activePersona === "founders" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/aboutus"
+                      : activePersona === "founders" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/about"
                       ? "left-[110px] w-[108px] opacity-100"
                       : "opacity-0 pointer-events-none"
                   )}
@@ -193,7 +193,7 @@ export default function Navbar() {
                   onClick={handleSelectInvestors}
                   className={cn(
                     "relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-colors duration-200 cursor-pointer whitespace-nowrap",
-                    activePersona === "investors" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/aboutus"
+                    activePersona === "investors" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/about"
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -207,7 +207,7 @@ export default function Navbar() {
                   onClick={handleSelectFounders}
                   className={cn(
                     "relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-colors duration-200 cursor-pointer whitespace-nowrap",
-                    activePersona === "founders" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/aboutus"
+                    activePersona === "founders" && !pathname?.startsWith("/admin") && pathname !== "/investor-education" && pathname !== "/about"
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -219,10 +219,10 @@ export default function Navbar() {
 
               {/* About Us Link (Right side of center two buttons) */}
               <Link
-                href="/aboutus"
+                href="/about"
                 className={cn(
                   "px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 whitespace-nowrap",
-                  pathname === "/aboutus"
+                  pathname === "/about"
                     ? "bg-foreground/10 text-foreground font-semibold"
                     : "text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
                 )}
@@ -366,7 +366,7 @@ export default function Navbar() {
               </Link>
 
               <Link
-                href="/aboutus"
+                href="/about"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center justify-between py-2 text-[15px] font-medium text-foreground hover:text-primary transition-colors"
               >

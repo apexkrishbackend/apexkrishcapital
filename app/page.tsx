@@ -194,7 +194,7 @@ export default function Home() {
       {/* FOOTER */}
       <footer className="mt-auto border-t border-border bg-background py-12 px-4 sm:px-6 text-center text-sm text-muted-foreground space-y-5 font-normal">
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm font-medium">
-          <Link href="/aboutus" className="text-foreground hover:underline transition-colors">
+          <Link href="/about" className="text-foreground hover:underline transition-colors">
             About Us
           </Link>
           <span className="text-border">·</span>

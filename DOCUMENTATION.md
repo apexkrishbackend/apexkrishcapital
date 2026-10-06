@@ -68,7 +68,7 @@ my-app/
 ├── app/
 │   ├── layout.tsx                     # Global Root Layout (ClerkProvider, Theme, Fonts, Navbar)
 │   ├── page.tsx                       # Public Landing Page (Hero, Offerings, Sector Thesis, Fiduciary)
-│   ├── aboutus/page.tsx               # Institutional About Us & Team Thesis
+│   ├── about/page.tsx               # Institutional About Us & Team Thesis
 │   ├── profile/page.tsx               # Protected Investor Profile Management Route
 │   ├── admin/page.tsx                 # Protected Administrative Operations Command Center
 │   ├── investor-education/page.tsx    # SEC 506(c) & SPV Investor Education Portal
