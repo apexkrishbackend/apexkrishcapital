@@ -2,7 +2,7 @@
 
 **ApexKrish Capital** is a high-performance private market syndication platform connecting verified, accredited investors with direct Special Purpose Vehicle (SPV) allocations into high-conviction tier-one frontier technology companies (e.g., Micro1 Inc., Cursor/Anysphere, Scale AI, xAI, Neuralink).
 
----
+--- 
 
 ## Key Features
 
